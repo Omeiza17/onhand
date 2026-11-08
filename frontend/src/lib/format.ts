@@ -80,19 +80,6 @@ export function isBelowMinimum(item: StockItem): boolean {
   )
 }
 
-/**
- * Products that need buying, derived from stock until the shopping list API exists
- * (slice 5): STATUS items that are Low/Out, COUNTED items below their minimum.
- */
-export function countToBuy(items: StockItem[]): number {
-  const products = new Set<string>()
-  for (const item of items) {
-    if ((item.trackingMode === 'STATUS' && item.status !== 'HAVE') || isBelowMinimum(item)) {
-      products.add(item.productId)
-    }
-  }
-  return products.size
-}
 
 /** Parses typed decimals, accepting "," or "." as separator. NaN when not a number. */
 export function parseDecimal(text: string): number {

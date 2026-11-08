@@ -1,0 +1,163 @@
+/* Shopping list (DESIGN.md, Screen 3) */
+
+.shop-add {
+  padding: 4px var(--gutter) 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.shop-add__field {
+  flex: 1;
+  min-width: 0;
+}
+
+.shop-add__field input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 16px;
+  color: var(--ink);
+  outline: 0;
+}
+
+.shop-add__field input:focus {
+  border: 2px solid var(--ink);
+  padding: 0 13px;
+}
+
+.shop-add__button {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  border: 0;
+  border-radius: var(--radius-input);
+  background: var(--accent);
+  color: var(--on-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shop-add__button:disabled {
+  opacity: 0.6;
+}
+
+.shop-list {
+  padding: 4px var(--gutter) 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* leave room above the tab bar for the put-away card */
+.shop-list--card {
+  padding-bottom: 150px;
+}
+
+/* the whole row is the label of its checkbox */
+.shop-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 60px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
+}
+
+.place__card li:last-child .shop-row {
+  border-bottom: 0;
+}
+
+.shop-row input {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.shop-row__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shop-row__name {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.shop-row__where {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.shop-row--done .shop-row__name {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+/* tags: Low / Below {min} = warm fill, Out = dashed */
+.pill-tag {
+  flex: none;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pill-tag--low {
+  border: 1px solid var(--low-bd);
+  background: var(--low-bg);
+  color: var(--low-ink);
+}
+
+.pill-tag--out {
+  border: 1.5px dashed var(--out-bd);
+  background: var(--surface);
+  color: var(--out-ink);
+}
+
+/* "Back home? Mark what you bought as in stock." above the tab bar */
+.put-away {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tabbar-height) + 12px);
+  z-index: 3;
+  max-width: var(--app-max-width);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.put-away__card {
+  padding: 14px 12px 12px;
+  border-radius: 18px;
+  background: var(--toast-bg);
+  color: var(--toast-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.put-away__text {
+  margin: 0 4px;
+  font-size: 15px;
+}
+
+.put-away__button {
+  height: 50px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--toast-ink);
+  color: var(--toast-bg);
+  font-size: 17px;
+  font-weight: 600;
+}

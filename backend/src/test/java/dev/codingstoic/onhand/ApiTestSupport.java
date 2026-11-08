@@ -27,7 +27,7 @@ public abstract class ApiTestSupport {
 
 	@BeforeEach
 	void cleanDatabase() {
-		jdbc.sql("truncate stock_event, stock_item, product, location").update();
+		jdbc.sql("truncate shopping_list_item, stock_event, stock_item, product, location").update();
 	}
 
 	protected RestTestClient.ResponseSpec post(String uri, String json) {

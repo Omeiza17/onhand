@@ -95,3 +95,32 @@ export interface ProductPatch {
   minQuantity?: number
   stepSize?: number
 }
+
+/** shopping.ShoppingItem — AUTO: running low (tick by productId); MANUAL: added by you (id). */
+export interface ShoppingItem {
+  id: string | null
+  productId: string | null
+  name: string
+  source: 'AUTO' | 'MANUAL'
+  reason: 'LOW' | 'OUT' | 'BELOW_MIN' | null
+  minQuantity: number | null
+  unit: Unit | null
+  /** where it lives, e.g. "Under the sink" */
+  places: string | null
+  checked: boolean
+}
+
+/** shopping.ShoppingList — running low, then yours, then the basket. */
+export interface ShoppingList {
+  toBuy: number
+  inBasket: number
+  items: ShoppingItem[]
+}
+
+/** shopping.PutAwayResult — undo `eventIds` (newest first) to take the restocks back. */
+export interface PutAwayResult {
+  putAway: number
+  eventIds: string[]
+  skipped: string[]
+  list: ShoppingList
+}
