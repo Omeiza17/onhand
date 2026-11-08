@@ -109,7 +109,19 @@ export default function AddProduct({ initialName, stock }: { initialName: string
 
   const itemsOf = (productId: string) => (stock.items ?? []).filter((i) => i.productId === productId)
 
-  const locationId = pickedLocationId ?? locations?.[0]?.id ?? null
+  // No silent default (changelog 5): the place you picked; else, for a new product, a suggestion —
+  // where the most recently updated item of the selected kind lives (follows the kind until you
+  // pick); else nothing, and the button asks you to choose.
+  const suggestedLocationId = useMemo(() => {
+    const known = new Set((locations ?? []).map((l) => l.id))
+    let latest: StockItem | null = null
+    for (const item of stock.items ?? []) {
+      if (item.kind !== kind || !known.has(item.locationId)) continue
+      if (!latest || Date.parse(item.updatedAt) > Date.parse(latest.updatedAt)) latest = item
+    }
+    return latest?.locationId ?? null
+  }, [stock.items, kind, locations])
+  const locationId = pickedLocationId ?? (restock ? null : suggestedLocationId)
   const location = locations?.find((l) => l.id === locationId)
 
   const countedUnit: Unit = restock?.defaultUnit ?? unit
