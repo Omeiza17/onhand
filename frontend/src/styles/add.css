@@ -89,6 +89,27 @@
   outline: 0;
 }
 
+/* category: a plain text input (1px line border, ink when focused) */
+.text-input {
+  height: var(--tap);
+  padding: 0 12px;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 16px;
+  color: var(--ink);
+  outline: 0;
+}
+
+.text-input:focus {
+  border: 2px solid var(--ink);
+  padding: 0 11px;
+}
+
+.field__optional {
+  font-weight: 400;
+}
+
 /* --- autocomplete --- */
 
 .suggest {

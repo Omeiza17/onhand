@@ -130,6 +130,10 @@ Bottom sheet over `--scrim` (tap scrim = close), radius 20px top corners, grab h
   matching existing products in a card below: "{Name} — Already tracked ·
   {location} · {qty}", with a "Restock" action. Last row: "New product: "{typed}"".
 - "What is it?" — **Food / Household** chips, two equal halves, default Food.
+- "Category" (optional) — a text input, placeholder "e.g. Grains, Cleaning",
+  with the categories already used for the selected kind as chips below it
+  (filtered by what's typed, up to 12). Tapping a chip fills the field; tapping
+  the selected chip clears it.
 - "How do you track it?" — two large toggle cards side by side:
   "Count it" (hint "3 tins, 485 g, 1 spare") and "Have / Low / Out"
   (hint "Spices, oil, dish soap"). Selected = 2px ink border.
@@ -180,7 +184,7 @@ as Add product, prefilled.
 
 - Header: "Cancel" · title "Edit product". Under it, a muted context line:
   "Was "{original name}" · {qty} in {location}".
-- Name field, "What is it?" (Food/Household), "Where does it live?" (location chips).
+- Name field, "What is it?" (Food/Household), "Category", "Where does it live?" (location chips).
 - **Changing location** shows a note under the chips (`--have-bg` fill,
   `--have-ink` text, arrow icon): "Moves 1 from Pantry to Bathroom". Save
   label becomes "Save and move".

@@ -5,6 +5,7 @@ import { archiveProduct, getProduct, patchProduct, setStepSize, unarchiveProduct
 import { convertStock, moveStock, undoStockChange } from '../api/stock.ts'
 import type { Kind, Location, Product, ProductPatch, StockItem, TrackingMode, Unit } from '../api/types.ts'
 import { ArrowRightIcon, ArchiveIcon, MinusIcon, PlusIcon } from '../components/Icons.tsx'
+import CategoryField from '../components/CategoryField.tsx'
 import { Link } from '../components/Link.tsx'
 import UnitPicker from '../components/UnitPicker.tsx'
 import {
@@ -15,6 +16,7 @@ import {
   stepChoices,
   unitLabel,
 } from '../lib/format.ts'
+import { canonicalCategory } from '../lib/category.ts'
 import { navigate } from '../lib/router.ts'
 import { useToast } from '../lib/toast.ts'
 import type { StockState } from '../lib/useStock.ts'
@@ -102,6 +104,8 @@ function EditForm({ product, item, places, locations, stock }: FormProps) {
 
   const [name, setName] = useState(product.name)
   const [kind, setKind] = useState<Kind>(product.kind)
+  const [category, setCategory] = useState(product.category ?? '')
+  const [knownCategories, setKnownCategories] = useState<string[]>([])
   const [locationId, setLocationId] = useState(item?.locationId ?? product.defaultLocationId ?? '')
   const [mode, setMode] = useState<TrackingMode>(product.trackingMode)
   const [unit, setUnit] = useState<Unit>(origUnit)
@@ -126,9 +130,12 @@ function EditForm({ product, item, places, locations, stock }: FormProps) {
 
   const amount = parseDecimal(amountText)
   const trimmed = name.trim()
+  const newCategory = canonicalCategory(category, knownCategories)
+  const categoryChanged = newCategory !== (product.category ?? '')
   const changed =
     trimmed !== product.name ||
     kind !== product.kind ||
+    categoryChanged ||
     moving ||
     converting ||
     (counted && (minQuantity !== origMin || step !== origStep))
@@ -167,10 +174,11 @@ function EditForm({ product, item, places, locations, stock }: FormProps) {
     const events: string[] = []
     let after: StockItem | null = item
     try {
-      // 1. name and kind first: a clash (409) stops here, before anything at home changes
+      // 1. name, kind and category first: a clash (409) stops here, before anything at home changes
       const details: ProductPatch = {}
       if (trimmed !== product.name) details.name = trimmed
       if (kind !== product.kind) details.kind = kind
+      if (categoryChanged) details.category = newCategory
       if (Object.keys(details).length > 0) await patchProduct(product.id, details)
 
       // 2. mode / unit, with the amount at home made explicit
@@ -299,6 +307,14 @@ function EditForm({ product, item, places, locations, stock }: FormProps) {
           ))}
         </div>
       </div>
+
+      <CategoryField
+        value={category}
+        onChange={setCategory}
+        kind={kind}
+        idPrefix="edit-category"
+        onKnown={setKnownCategories}
+      />
 
       <div className="field">
         <div className="field__label" id="edit-place">

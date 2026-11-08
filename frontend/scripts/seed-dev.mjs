@@ -12,7 +12,7 @@ const PLACES = ['Pantry', 'Fridge', 'Freezer', 'Under the sink', 'Bathroom']
 // [name, category, kind, place, quantity-or-status, unit, step (if not the unit default), min]
 const ITEMS = [
   ['Basmati rice', 'Grains', 'FOOD', 'Pantry', 1.5, 'kg', null, 0.5],
-  ['Chickpeas', 'Tins', 'FOOD', 'Pantry', 3, 'tin', null, 1],
+  ['Chickpeas', 'Legumes', 'FOOD', 'Pantry', 3, 'tin', null, 1],
   ['Cumin', 'Spices', 'FOOD', 'Pantry', 'HAVE'],
   ['Olive oil', 'Oils', 'FOOD', 'Pantry', 'LOW'],
   ['Eggs', 'Dairy & eggs', 'FOOD', 'Fridge', 4, 'piece', null, 4],

@@ -167,6 +167,15 @@ in the same transaction so reads stay simple.
 
 ## Changelog
 
+- **2026-11-08 (6)** — Category can be set in the app. Until now only the seed
+  script set `category`; Add product and Edit product get an optional
+  "Category" field (DESIGN.md). Suggestions are the categories already used by
+  products of the selected kind; a typed category that matches one
+  case-insensitively takes the existing spelling, so "grains" doesn't become a
+  second "Grains". Clearing the field clears the category. Categories group
+  products (Grains, Spices, Cleaning), not packaging — the unit says "tin".
+  Backend: none (`POST` and `PATCH` already take `category`).
+
 - **2026-11-08 (5)** — Fixes from the first on-phone test.
   1. **Counted at 0 = out.** A COUNTED product at 0 goes on the shopping list
      even without `min_quantity` (tag "Out"), and Home shows it in the Out style

@@ -14,9 +14,11 @@ import type {
   Unit,
 } from '../api/types.ts'
 import { MinusIcon, PlusIcon } from '../components/Icons.tsx'
+import CategoryField from '../components/CategoryField.tsx'
 import { Link } from '../components/Link.tsx'
 import UnitPicker from '../components/UnitPicker.tsx'
 import { defaultStep, describe, formatQuantity, num, parseDecimal, unitLabel } from '../lib/format.ts'
+import { canonicalCategory } from '../lib/category.ts'
 import { navigate } from '../lib/router.ts'
 import { useToast } from '../lib/toast.ts'
 import type { StockState } from '../lib/useStock.ts'
@@ -52,6 +54,8 @@ export default function AddProduct({ initialName, stock }: { initialName: string
 
   const [name, setName] = useState(initialName)
   const [kind, setKind] = useState<Kind>('FOOD')
+  const [category, setCategory] = useState('')
+  const [knownCategories, setKnownCategories] = useState<string[]>([])
   const [mode, setMode] = useState<TrackingMode>('COUNTED')
   const [unit, setUnit] = useState<Unit>('piece')
   const [qtyText, setQtyText] = useState('1')
@@ -214,6 +218,7 @@ export default function AddProduct({ initialName, stock }: { initialName: string
         const product = await createProduct({
           name: query,
           kind,
+          category: canonicalCategory(category, knownCategories) || null,
           trackingMode: mode,
           defaultUnit: mode === 'COUNTED' ? unit : null,
           defaultLocationId: locationId,
@@ -346,6 +351,14 @@ export default function AddProduct({ initialName, stock }: { initialName: string
                 ))}
               </div>
             </div>
+
+            <CategoryField
+              value={category}
+              onChange={setCategory}
+              kind={kind}
+              idPrefix="add-category"
+              onKnown={setKnownCategories}
+            />
 
             <div className="field">
               <div className="field__label" id="mode-label">

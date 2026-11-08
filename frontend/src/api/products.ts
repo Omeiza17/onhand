@@ -1,6 +1,11 @@
 import { json, request } from './client.ts'
 import type { NewProduct, Product, ProductPatch } from './types.ts'
 
+/** All products (not archived), by name. */
+export function listProducts(): Promise<Product[]> {
+  return request('/products')
+}
+
 /** Products whose name contains `query` (case-insensitive), by name. */
 export function searchProducts(query: string): Promise<Product[]> {
   return request(`/products?q=${encodeURIComponent(query)}`)
