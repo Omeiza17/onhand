@@ -44,25 +44,6 @@ public class ProductService {
 		}
 	}
 
-	/**
-	 * Replaces the product. An omitted {@code kind} keeps the current one. Changing the tracking
-	 * mode is refused while the product has stock (it would not fit).
-	 */
-	@Transactional
-	public Product update(UUID id, ProductRequest request) {
-		Product current = get(id);
-		ProductRequest product = normalize(request, current.kind());
-		if (current.trackingMode() != product.trackingMode() && products.hasStock(id)) {
-			throw new ConflictException("Can't change the tracking mode of a product that has stock.");
-		}
-		try {
-			return products.update(id, product).orElseThrow(() -> new NotFoundException("Product", id));
-		}
-		catch (DuplicateKeyException ex) {
-			throw conflict(ex, product);
-		}
-	}
-
 	/** Sets how far one tap on −/+ moves (null = unit default). COUNTED products only. */
 	@Transactional
 	public Product setStepSize(UUID id, StepSizeRequest request) {

@@ -58,30 +58,6 @@ public class ProductRepository {
 				.single();
 	}
 
-	/**
-	 * Replaces all editable fields. Step size is not one of them; it is kept, except that a change
-	 * of unit or tracking mode resets it to the unit default (the old step would not fit).
-	 * Empty if the product does not exist.
-	 */
-	public Optional<Product> update(UUID id, ProductRequest p) {
-		return jdbc.sql("""
-				update product
-				set name = :name, kind = :kind, category = :category, tracking_mode = :trackingMode,
-				    default_unit = :defaultUnit, default_location_id = :defaultLocationId,
-				    min_quantity = :minQuantity, barcode = :barcode,
-				    step_size = case
-				        when tracking_mode = :trackingMode and default_unit is not distinct from :defaultUnit
-				        then step_size
-				    end,
-				    updated_at = now()
-				where id = :id
-				returning\s""" + COLUMNS)
-				.params(params(p))
-				.param("id", id)
-				.query(ProductRepository::map)
-				.optional();
-	}
-
 	/** Sets the step size (null = unit default). Empty if the product does not exist. */
 	public Optional<Product> updateStepSize(UUID id, BigDecimal stepSize) {
 		return jdbc.sql("update product set step_size = :stepSize, updated_at = now() where id = :id returning\s" + COLUMNS)
@@ -89,13 +65,6 @@ public class ProductRepository {
 				.param("stepSize", stepSize)
 				.query(ProductRepository::map)
 				.optional();
-	}
-
-	public boolean hasStock(UUID id) {
-		return jdbc.sql("select exists(select 1 from stock_item where product_id = :id)")
-				.param("id", id)
-				.query(Boolean.class)
-				.single();
 	}
 
 	/** Edit product's plain fields. Empty if the product does not exist. */

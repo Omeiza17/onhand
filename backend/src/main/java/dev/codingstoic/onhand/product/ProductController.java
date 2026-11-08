@@ -43,11 +43,6 @@ class ProductController {
 		return ResponseEntity.created(URI.create("/api/v1/products/" + created.id())).body(created);
 	}
 
-	@PutMapping("/{id}")
-	Product update(@PathVariable UUID id, @Valid @RequestBody ProductRequest request) {
-		return service.update(id, request);
-	}
-
 	/** Set from the Home update panel; {@code {"stepSize": null}} resets to the unit default. */
 	@PutMapping("/{id}/step-size")
 	Product setStepSize(@PathVariable UUID id, @Valid @RequestBody StepSizeRequest request) {

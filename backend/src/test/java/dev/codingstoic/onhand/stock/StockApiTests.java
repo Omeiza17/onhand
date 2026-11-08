@@ -548,14 +548,13 @@ class StockApiTests extends ApiTestSupport {
 	}
 
 	@Test
-	void trackingModeCannotChangeWhileProductHasStock() {
+	void aStockedProductCanBeRenamed() {
 		addRice("1");
 
-		put("/api/v1/products/" + rice, "{\"name\":\"Basmati rice\",\"trackingMode\":\"STATUS\"}")
-				.expectStatus().isEqualTo(409);
-		// other edits are fine
-		put("/api/v1/products/" + rice, "{\"name\":\"White basmati\",\"trackingMode\":\"COUNTED\"}")
+		client.patch().uri("/api/v1/products/" + rice).contentType(MediaType.APPLICATION_JSON)
+				.body("{\"name\":\"White basmati\"}").exchange()
 				.expectStatus().isOk();
+		client.get().uri(STOCK).exchange().expectBody().jsonPath("$[0].productName").isEqualTo("White basmati");
 	}
 
 	// --- helpers ---

@@ -7,6 +7,7 @@ import dev.codingstoic.onhand.ApiTestSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.client.RestTestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -65,12 +66,11 @@ class ProductApiTests extends ApiTestSupport {
 				.expectStatus().isOk()
 				.expectBody().jsonPath("$.name").isEqualTo("Oats");
 
-		put(PRODUCTS + "/" + id, "{\"name\":\"Rolled oats\",\"trackingMode\":\"STATUS\"}")
+		patch(id, "{\"name\":\"Rolled oats\"}")
 				.expectStatus().isOk()
 				.expectBody()
 				.jsonPath("$.name").isEqualTo("Rolled oats")
-				.jsonPath("$.trackingMode").isEqualTo("STATUS")
-				.jsonPath("$.defaultUnit").doesNotExist();
+				.jsonPath("$.defaultUnit").isEqualTo("g");
 
 		client.post().uri(PRODUCTS + "/" + id + "/archive").exchange()
 				.expectStatus().isOk()
@@ -190,13 +190,13 @@ class ProductApiTests extends ApiTestSupport {
 		String id = createProduct("{\"name\":\"Floor cleaner\",\"kind\":\"HOUSEHOLD\",\"trackingMode\":\"STATUS\"}");
 
 		// omitted: kept, not reset to FOOD
-		put(PRODUCTS + "/" + id, "{\"name\":\"Floor cleaner\",\"trackingMode\":\"STATUS\",\"category\":\"Cleaning\"}")
+		patch(id, "{\"category\":\"Cleaning\"}")
 				.expectStatus().isOk()
 				.expectBody()
 				.jsonPath("$.kind").isEqualTo("HOUSEHOLD")
 				.jsonPath("$.category").isEqualTo("Cleaning");
 
-		put(PRODUCTS + "/" + id, "{\"name\":\"Floor cleaner\",\"kind\":\"FOOD\",\"trackingMode\":\"STATUS\"}")
+		patch(id, "{\"kind\":\"FOOD\"}")
 				.expectStatus().isOk()
 				.expectBody().jsonPath("$.kind").isEqualTo("FOOD");
 	}
@@ -207,7 +207,7 @@ class ProductApiTests extends ApiTestSupport {
 				.expectStatus().isBadRequest()
 				.expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON);
 		String id = createProduct("{\"name\":\"Batteries\",\"kind\":\"HOUSEHOLD\",\"trackingMode\":\"COUNTED\"}");
-		put(PRODUCTS + "/" + id, "{\"name\":\"Batteries\",\"kind\":\"food\",\"trackingMode\":\"COUNTED\"}")
+		patch(id, "{\"kind\":\"food\"}")
 				.expectStatus().isBadRequest();
 	}
 
@@ -298,27 +298,44 @@ class ProductApiTests extends ApiTestSupport {
 	}
 
 	@Test
-	void productUpdateKeepsStepSizeUnlessUnitOrModeChanges() {
-		String id = createProduct("{\"name\":\"Chicken\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"g\"}");
+	void noUpdatePathClearsStepSize() {
+		String pantry = createLocation("Pantry");
+		String fridge = createLocation("Fridge");
+		String id = createProduct("{\"name\":\"Chicken\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"g\",\"defaultLocationId\":\"%s\"}"
+				.formatted(pantry));
 		put(PRODUCTS + "/" + id + "/step-size", "{\"stepSize\":50}").expectStatus().isOk();
+		String item = field(post("/api/v1/stock", "{\"productId\":\"%s\",\"quantity\":485}".formatted(id))
+				.expectStatus().isOk().expectBody(String.class).returnResult().getResponseBody(), "id");
 
-		// other edits keep it (and stepSize in the body is not a way to change it)
-		put(PRODUCTS + "/" + id, "{\"name\":\"Chicken thighs\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"g\",\"stepSize\":7}")
+		// every edit of plain fields keeps it — including one that sends no stepSize at all
+		for (String body : new String[] { "{\"name\":\"Chicken thighs\"}", "{\"kind\":\"HOUSEHOLD\"}",
+				"{\"category\":\"Meat\"}", "{\"minQuantity\":200}", "{\"category\":\"\",\"minQuantity\":0}", "{}" }) {
+			patch(id, body).expectStatus().isOk().expectBody().jsonPath("$.stepSize").isEqualTo(50.0);
+		}
+		// stock changes, moving, archiving and restoring keep it too
+		client.post().uri("/api/v1/stock/" + item + "/decrease").exchange().expectStatus().isOk();
+		post("/api/v1/stock/" + item + "/move", "{\"locationId\":\"%s\"}".formatted(fridge)).expectStatus().isOk();
+		client.post().uri(PRODUCTS + "/" + id + "/archive").exchange().expectStatus().isOk();
+		client.post().uri(PRODUCTS + "/" + id + "/unarchive").exchange()
 				.expectStatus().isOk()
 				.expectBody().jsonPath("$.stepSize").isEqualTo(50.0);
+		assertThat(jdbc.sql("select step_size from product where id = ?::uuid").param(id)
+				.query(BigDecimal.class).single()).isEqualByComparingTo("50");
 
-		// a new unit resets it to the unit default
-		put(PRODUCTS + "/" + id, "{\"name\":\"Chicken thighs\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"kg\"}")
-				.expectStatus().isOk()
+		// the old full-replace PUT is gone
+		put(PRODUCTS + "/" + id, "{\"name\":\"Chicken\",\"trackingMode\":\"COUNTED\"}").expectStatus().isEqualTo(405);
+
+		// by design, only a unit change starts the step fresh (a 50 g step means nothing in kg)
+		post("/api/v1/stock/" + item + "/convert", "{\"trackingMode\":\"COUNTED\",\"unit\":\"kg\",\"quantity\":0.4}")
+				.expectStatus().isOk();
+		client.get().uri(PRODUCTS + "/" + id).exchange()
 				.expectBody()
 				.jsonPath("$.stepSize").doesNotExist()
 				.jsonPath("$.effectiveStepSize").isEqualTo(0.5);
+	}
 
-		// switching to STATUS clears it too (the database would refuse a step otherwise)
-		put(PRODUCTS + "/" + id + "/step-size", "{\"stepSize\":0.25}").expectStatus().isOk();
-		put(PRODUCTS + "/" + id, "{\"name\":\"Chicken thighs\",\"trackingMode\":\"STATUS\"}")
-				.expectStatus().isOk()
-				.expectBody().jsonPath("$.stepSize").doesNotExist();
+	private RestTestClient.ResponseSpec patch(String id, String json) {
+		return client.patch().uri(PRODUCTS + "/" + id).contentType(MediaType.APPLICATION_JSON).body(json).exchange();
 	}
 
 	@Test
@@ -333,7 +350,6 @@ class ProductApiTests extends ApiTestSupport {
 	void unknownIdIs404() {
 		String missing = PRODUCTS + "/01900000-0000-7000-8000-000000000000";
 		client.get().uri(missing).exchange().expectStatus().isNotFound();
-		put(missing, "{\"name\":\"X\",\"trackingMode\":\"STATUS\"}").expectStatus().isNotFound();
 		client.post().uri(missing + "/archive").exchange().expectStatus().isNotFound();
 		client.patch().uri(missing).contentType(MediaType.APPLICATION_JSON).body("{\"name\":\"X\"}").exchange()
 				.expectStatus().isNotFound();
