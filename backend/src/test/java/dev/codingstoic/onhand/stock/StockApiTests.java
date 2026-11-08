@@ -245,6 +245,17 @@ class StockApiTests extends ApiTestSupport {
 	}
 
 	@Test
+	void oneTapOnABottleMovesOneBottle() {
+		String wine = createProduct("{\"name\":\"Red wine\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"bottle\"}");
+		String item = read(ok(post(STOCK, "{\"productId\":\"%s\",\"locationId\":\"%s\",\"quantity\":3}"
+				.formatted(wine, pantry))), "$.item.id");
+
+		String json = ok(client.post().uri(STOCK + "/" + item + "/decrease").exchange());
+		assertThat(quantity(json)).isEqualByComparingTo("2");
+		assertThat(read(json, "$.item.unit")).isEqualTo("bottle");
+	}
+
+	@Test
 	void statusItemsHaveNoStepSize() {
 		String json = ok(post(STOCK, "{\"productId\":\"%s\",\"locationId\":\"%s\"}".formatted(cumin, pantry)));
 		assertThat(read(json, "$.item.stepSize")).isNull();

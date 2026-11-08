@@ -5,18 +5,32 @@ export function num(n: number): string {
   return String(Number(n.toFixed(3)))
 }
 
-/** Quantity text per DESIGN.md: piece → "4", tin/pack pluralise, metric "485 g". */
+const MEASURED: ReadonlySet<Unit> = new Set(['g', 'kg', 'ml', 'l'])
+
+/** g/kg/ml/l: amounts are weighed or measured, not counted. */
+export function isMeasured(unit: Unit | null): boolean {
+  return unit !== null && MEASURED.has(unit)
+}
+
+/** English plural of a counted unit: tins, boxes, bunches. */
+function plural(unit: Unit): string {
+  return unit === 'box' || unit === 'bunch' ? `${unit}es` : `${unit}s`
+}
+
+/**
+ * Quantity text per DESIGN.md: piece → "4", metric "485 g", other counted units
+ * pluralise: "1 bottle", "3 boxes".
+ */
 export function formatQuantity(unit: Unit | null, n: number): string {
   if (unit === null || unit === 'piece') return num(n)
-  if (unit === 'tin' || unit === 'pack') return `${num(n)} ${unit}${n === 1 ? '' : 's'}`
-  return `${num(n)} ${unit}`
+  if (isMeasured(unit)) return `${num(n)} ${unit}`
+  return `${num(n)} ${n === 1 ? unit : plural(unit)}`
 }
 
 /** Suffix for the update sheet's input. */
 export function unitLabel(unit: Unit | null): string {
   if (unit === null || unit === 'piece') return 'pcs'
-  if (unit === 'tin' || unit === 'pack') return `${unit}s`
-  return unit
+  return isMeasured(unit) ? unit : plural(unit)
 }
 
 export const STATUS_LABEL: Record<StockStatus, string> = { HAVE: 'Have', LOW: 'Low', OUT: 'Out' }

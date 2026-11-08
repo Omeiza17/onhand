@@ -2,7 +2,24 @@
 
 export type Kind = 'FOOD' | 'HOUSEHOLD'
 export type TrackingMode = 'COUNTED' | 'STATUS'
-export type Unit = 'piece' | 'g' | 'kg' | 'ml' | 'l' | 'pack' | 'tin'
+/** Metric measures (UN/ECE Rec 20) and counted containers (UN/ECE Rec 21 package types). */
+export type MeasuredUnit = 'g' | 'kg' | 'ml' | 'l'
+export type CountedUnit =
+  | 'piece'
+  | 'pack'
+  | 'tin'
+  | 'bottle'
+  | 'jar'
+  | 'roll'
+  | 'box'
+  | 'bag'
+  | 'carton'
+  | 'tube'
+  | 'tub'
+  | 'bar'
+  | 'sachet'
+  | 'bunch'
+export type Unit = MeasuredUnit | CountedUnit
 export type StockStatus = 'HAVE' | 'LOW' | 'OUT'
 
 /** stock.StockItemView — one product at one location, as the Home screen shows it. */

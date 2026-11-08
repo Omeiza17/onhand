@@ -222,7 +222,9 @@ class ProductApiTests extends ApiTestSupport {
 	@Test
 	void effectiveStepSizeFollowsTheUnitDefault() {
 		String[][] cases = { { "piece", "1" }, { "pack", "1" }, { "tin", "1" }, { "g", "100" }, { "kg", "0.5" },
-				{ "ml", "250" }, { "l", "0.5" } };
+				{ "ml", "250" }, { "l", "0.5" }, { "bottle", "1" }, { "jar", "1" }, { "roll", "1" }, { "box", "1" },
+				{ "bag", "1" }, { "carton", "1" }, { "tube", "1" }, { "tub", "1" }, { "bar", "1" }, { "sachet", "1" },
+				{ "bunch", "1" } };
 		for (String[] c : cases) {
 			post(PRODUCTS, "{\"name\":\"Thing in %s\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"%s\"}"
 					.formatted(c[0], c[0]))
@@ -235,6 +237,23 @@ class ProductApiTests extends ApiTestSupport {
 		post(PRODUCTS, "{\"name\":\"Salt\",\"trackingMode\":\"STATUS\"}")
 				.expectStatus().isCreated()
 				.expectBody().jsonPath("$.effectiveStepSize").doesNotExist();
+	}
+
+	@Test
+	void householdUnitsRoundTripAndUnknownUnitsAreRefused() {
+		for (String unit : new String[] { "bottle", "jar", "roll", "box", "bag", "carton", "tube", "tub", "bar",
+				"sachet", "bunch" }) {
+			String id = createProduct("{\"name\":\"Thing by %s\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"%s\"}"
+					.formatted(unit, unit));
+			client.get().uri(PRODUCTS + "/" + id).exchange()
+					.expectBody().jsonPath("$.defaultUnit").isEqualTo(unit);
+		}
+		// not units: a durable "pair", a plural, a Rec 21 code instead of the name
+		for (String bad : new String[] { "pair", "bottles", "BO" }) {
+			post(PRODUCTS, "{\"name\":\"Nope %s\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"%s\"}"
+					.formatted(bad, bad))
+					.expectStatus().isBadRequest();
+		}
 	}
 
 	@Test

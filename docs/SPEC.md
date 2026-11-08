@@ -42,10 +42,10 @@ A kind of thing I keep (e.g. "Basmati rice", "Eggs", "Cumin", "Floor cleaner",
 | kind | **new** — `FOOD` or `HOUSEHOLD`, required, default `FOOD`. Drives the Home filter. |
 | category | optional free text or simple list (Grains, Dairy, Spices, Cleaning, Toiletries…) |
 | tracking_mode | `COUNTED` or `STATUS` (see below) |
-| default_unit | for COUNTED only: `piece`, `g`, `kg`, `ml`, `l`, `pack`, `tin` |
+| default_unit | for COUNTED only. Measured (metric, UN/ECE Rec 20): `g`, `kg`, `ml`, `l`. Counted (UN/ECE Rec 21 package types): `piece`, `pack`, `tin`, `bottle`, `jar`, `roll`, `box`, `bag`, `carton`, `tube`, `tub`, `bar`, `sachet`, `bunch` |
 | default_location | optional |
 | min_quantity | optional, COUNTED only — below this → goes on shopping list |
-| step_size | **new** — COUNTED only, nullable. How much −/+ moves. Null = unit default: piece/pack/tin 1, g 100, kg 0.5, ml 250, l 0.5. Set from the Home update panel, not on Add product. |
+| step_size | **new** — COUNTED only, nullable. How much −/+ moves. Null = unit default: counted units 1, g 100, kg 0.5, ml 250, l 0.5. Set from the Home update panel, not on Add product. |
 | barcode | optional, nullable, unique when present (Phase 2) |
 
 ### Tracking modes
@@ -151,6 +151,14 @@ in the same transaction so reads stay simple.
   for MVP.
 
 ## Changelog
+
+- **2026-11-08 (3)** — More household units, following UN/ECE standards: metric
+  measures (Rec 20) stay `g`/`kg`/`ml`/`l`; counted containers are named after
+  Rec 21 package types — added `bottle`, `jar`, `roll`, `box`, `bag`, `carton`,
+  `tube`, `tub`, `bar`, `sachet`, `bunch` (default step 1). Backend impact: new
+  Flyway migration widening the unit check; Unit enum records each UN/ECE code.
+  Guidance: dried goods you cook in portions (e.g. dried chickpeas) are best in
+  `g` with a step of one portion; tinned and dried versions are separate products.
 
 - **2026-11-08 (2)** — Partial use decided: **both** exact entry and per-product
   step size (see Quick update). Backend impact: new Flyway migration adding
