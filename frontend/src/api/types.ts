@@ -52,6 +52,24 @@ export interface StockChange {
   eventId: string | null
 }
 
+/** location.Location */
+export interface Location {
+  id: string
+  name: string
+  sortOrder: number
+}
+
+/** product.ProductRequest — body for creating a product. */
+export interface NewProduct {
+  name: string
+  kind: Kind
+  category?: string | null
+  trackingMode: TrackingMode
+  defaultUnit?: Unit | null
+  defaultLocationId?: string | null
+  minQuantity?: number | null
+}
+
 /** product.Product */
 export interface Product {
   id: string

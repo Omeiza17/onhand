@@ -1,9 +1,22 @@
 import { json, request } from './client.ts'
-import type { Kind, StockChange, StockItem } from './types.ts'
+import type { Kind, StockChange, StockItem, StockStatus } from './types.ts'
 
 /** Everything at home, ordered by location then name. `kind` narrows it to FOOD or HOUSEHOLD. */
 export function listStock(kind?: Kind): Promise<StockItem[]> {
   return request(kind ? `/stock?kind=${kind}` : '/stock')
+}
+
+/**
+ * Puts a product at home. COUNTED: adds `quantity` (0 = at home but none left).
+ * STATUS: sets `status` (default HAVE). Location defaults to the product's default.
+ */
+export function addStock(body: {
+  productId: string
+  locationId?: string
+  quantity?: number
+  status?: StockStatus
+}): Promise<StockChange> {
+  return request('/stock', json('POST', body))
 }
 
 /** "+" — one tap moves by the product's step size. */

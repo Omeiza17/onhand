@@ -45,7 +45,10 @@ public class StockService {
 		return items.findAllViews(kind);
 	}
 
-	/** Puts a product at a location, creating the stock row if needed. */
+	/**
+	 * Puts a product at a location, creating the stock row if needed. Adding nothing (quantity 0
+	 * to an existing item, or the status it already has) writes no event.
+	 */
 	@Transactional
 	public StockChange add(AddStockRequest request) {
 		Product product = products.findById(request.productId())
@@ -60,7 +63,14 @@ public class StockService {
 		Optional<StockItem> existing = items.lock(product.id(), locationId);
 
 		if (product.trackingMode() == TrackingMode.COUNTED) {
+			if (request.status() != null) {
+				throw new InvalidRequestException("status", "not used for COUNTED products");
+			}
 			BigDecimal amount = request.quantity() != null ? request.quantity() : BigDecimal.ONE;
+			if (amount.signum() == 0 && existing.isPresent()) {
+				// adding nothing to an existing item changes nothing: no event
+				return new StockChange(view(existing.get().id()), null);
+			}
 			StockItem item = existing
 					.map(i -> items.updateQuantity(i.id(), i.quantity().add(amount)))
 					.orElseGet(() -> items.insertCounted(product.id(), locationId, amount));
@@ -69,11 +79,16 @@ public class StockService {
 		if (request.quantity() != null) {
 			throw new InvalidRequestException("quantity", "not used for STATUS products");
 		}
+		StockStatus to = request.status() != null ? request.status() : StockStatus.HAVE;
 		StockStatus from = existing.map(StockItem::status).orElse(null);
+		if (to == from) {
+			// already in that state: no event
+			return new StockChange(view(existing.get().id()), null);
+		}
 		StockItem item = existing
-				.map(i -> items.updateStatus(i.id(), StockStatus.HAVE))
-				.orElseGet(() -> items.insertStatus(product.id(), locationId, StockStatus.HAVE));
-		return record(item, StockEvent.statusChange(EventType.ADDED, item, from, StockStatus.HAVE, request.note()));
+				.map(i -> items.updateStatus(i.id(), to))
+				.orElseGet(() -> items.insertStatus(product.id(), locationId, to));
+		return record(item, StockEvent.statusChange(EventType.ADDED, item, from, to, request.note()));
 	}
 
 	/** "+" on a COUNTED item; one tap moves by the product's step size. */

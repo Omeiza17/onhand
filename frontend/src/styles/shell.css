@@ -7,6 +7,11 @@
   padding-bottom: calc(var(--tabbar-height) + 80px);
 }
 
+/* screens without the tab bar (Add product) manage their own bottom space */
+.app--task {
+  padding-bottom: 0;
+}
+
 /* --- bottom tab bar --- */
 
 .tabbar {

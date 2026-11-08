@@ -47,6 +47,7 @@ A kind of thing I keep (e.g. "Basmati rice", "Eggs", "Cumin", "Floor cleaner",
 | min_quantity | optional, COUNTED only — below this → goes on shopping list |
 | step_size | **new** — COUNTED only, nullable. How much −/+ moves. Null = unit default: counted units 1, g 100, kg 0.5, ml 250, l 0.5. Set from the Home update panel, not on Add product. |
 | barcode | optional, nullable, unique when present (Phase 2) |
+| archived_at | **new** — nullable timestamp. Set = removed from Home, search, autocomplete and shopping list. Never hard-delete: stock events reference the product. |
 
 ### Tracking modes
 - **COUNTED** — amount matters: "3 tins", "485 g", "6 rolls". Quick update = +/−
@@ -118,7 +119,20 @@ in the same transaction so reads stay simple.
    Name (with autocomplete against existing products), kind (Food/Household),
    tracking mode, location, optional quantity. The quantity field accepts typed
    decimal input (e.g. 485 g), with +/− as a shortcut. Under 10 seconds.
-4. **Shopping list**
+4. **Edit product** — opened by tapping a product's name on Home.
+   Same layout as Add product, prefilled: name, kind, location, tracking mode,
+   unit, step size (measured units), min quantity. Rules:
+   - **Location change = stock move**, recorded as a `MOVED` StockEvent and
+     undoable — not a silent field update.
+   - **Mode change needs an explicit conversion:** COUNTED → STATUS sets HAVE if
+     quantity > 0, else OUT (shown before saving). STATUS → COUNTED requires the
+     current amount.
+   - **Unit change requires re-entering the current amount** — no automatic
+     conversion between e.g. `bottle` and `ml`.
+   - **Remove from Onhand** archives the product (`archived_at`), no confirmation
+     dialog; the Home undo toast can restore it.
+   - Save is disabled until something changed. Editing stock history is out of scope.
+5. **Shopping list**
    Generated items + manual items, check off while shopping.
 
 ## Out of scope (MVP)
@@ -152,6 +166,17 @@ in the same transaction so reads stay simple.
 
 ## Changelog
 
+- **2026-11-08 (4)** — Added the Edit product screen (MVP screen 4). Backend
+  impact: Flyway migration adding nullable `archived_at` to product; exclude
+  archived products from all listing, search, autocomplete and shopping-list
+  queries; `PATCH` product (name, kind, category, unit, step_size, min_quantity;
+  name stays unique case-insensitive among non-archived products); move stock to
+  another location (writes `MOVED`, undoable); change tracking mode with the
+  conversion rules above (writes `ADJUSTED`/`STATUS_CHANGED`, undoable); unit
+  change takes the new current quantity; archive and unarchive endpoints
+  (unarchive used by undo). Tests for each, including that archived products
+  disappear from Home and the shopping list.
+
 - **2026-11-08 (3)** — More household units, following UN/ECE standards: metric
   measures (Rec 20) stay `g`/`kg`/`ml`/`l`; counted containers are named after
   Rec 21 package types — added `bottle`, `jar`, `roll`, `box`, `bag`, `carton`,
@@ -180,5 +205,6 @@ in the same transaction so reads stay simple.
 2. Stock + StockEvent + quick-update + undo endpoints
 3. PWA shell + Home screen + quick update
 4. Add-product screen
-5. Shopping list (API + screen)
-6. Finalise both Dockerfiles + Helm chart for k3s
+5. Edit-product screen (backend from changelog (4) first)
+6. Shopping list (API + screen)
+7. Finalise both Dockerfiles + Helm chart for k3s

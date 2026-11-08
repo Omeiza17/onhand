@@ -43,6 +43,21 @@ export function describe(item: StockItem): string {
   return formatQuantity(item.unit, item.quantity ?? 0)
 }
 
+/** Default step per unit — mirrors the backend's Unit.defaultStep. */
+export function defaultStep(unit: Unit): number {
+  switch (unit) {
+    case 'g':
+      return 100
+    case 'kg':
+    case 'l':
+      return 0.5
+    case 'ml':
+      return 250
+    default:
+      return 1
+  }
+}
+
 /** Step-size choices in the update sheet — weighed/measured units only. */
 const STEP_CHOICES: Partial<Record<Unit, number[]>> = {
   g: [50, 100, 250, 500],

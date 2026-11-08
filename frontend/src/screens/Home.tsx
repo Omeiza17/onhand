@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { ApiError, errorMessage } from '../api/client.ts'
 import { setStepSize } from '../api/products.ts'
 import {
@@ -11,10 +11,10 @@ import {
 import type { Kind, StockChange, StockItem } from '../api/types.ts'
 import { SearchIcon } from '../components/Icons.tsx'
 import StockRow from '../components/StockRow.tsx'
-import Toast, { type ToastMessage } from '../components/Toast.tsx'
 import UpdateSheet from '../components/UpdateSheet.tsx'
 import { describe } from '../lib/format.ts'
 import { Link } from '../components/Link.tsx'
+import { useToast } from '../lib/toast.ts'
 import type { StockState } from '../lib/useStock.ts'
 
 type Filter = 'ALL' | Kind
@@ -47,8 +47,7 @@ export default function Home({ stock }: { stock: StockState }) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('ALL')
   const [sheet, setSheet] = useState<{ itemId: string; opener: HTMLElement } | null>(null)
-  const [toast, setToast] = useState<ToastMessage | null>(null)
-  const toastId = useRef(0)
+  const toast = useToast()
   // latest request per item: a slower, older response must not overwrite a newer one
   const latest = useRef(new Map<string, number>())
   const sequence = useRef(0)
@@ -66,20 +65,14 @@ export default function Home({ stock }: { stock: StockState }) {
   const placeCount = useMemo(() => new Set(all.map((i) => i.locationId)).size, [all])
   const sheetItem = sheet ? all.find((i) => i.id === sheet.itemId) : undefined
 
-  const showToast = useCallback((text: string, onUndo?: () => void) => {
-    toastId.current += 1
-    setToast({ id: toastId.current, text, onUndo })
-  }, [])
-  const dismissToast = useCallback(() => setToast(null), [])
-
   async function undo(before: StockItem, eventId: string) {
-    setToast(null)
+    toast.dismiss()
     latest.current.set(before.id, ++sequence.current)
     try {
       const change = await undoStockChange(eventId)
       stock.replace(before.id, change.item)
     } catch (e) {
-      showToast(
+      toast.show(
         e instanceof ApiError && e.status === 409 ? `Can’t undo: ${before.productName} changed since` : errorMessage(e),
       )
       void stock.reload()
@@ -100,10 +93,10 @@ export default function Home({ stock }: { stock: StockState }) {
       stock.replace(item.id, change.item)
       const eventId = change.eventId
       if (eventId && change.item) {
-        showToast(`${item.productName}: ${describe(item)} → ${describe(change.item)}`, () => void undo(item, eventId))
+        toast.show(`${item.productName}: ${describe(item)} → ${describe(change.item)}`, () => void undo(item, eventId))
       }
     } catch (e) {
-      showToast(errorMessage(e))
+      toast.show(errorMessage(e))
       void stock.reload()
     }
   }
@@ -113,7 +106,7 @@ export default function Home({ stock }: { stock: StockState }) {
       const product = await setStepSize(item.productId, stepSize)
       stock.setStepSize(item.productId, product.effectiveStepSize)
     } catch (e) {
-      showToast(errorMessage(e))
+      toast.show(errorMessage(e))
     }
   }
 
@@ -181,7 +174,7 @@ export default function Home({ stock }: { stock: StockState }) {
                   onIncrease={(i) => void run(i, () => increaseStock(i.id))}
                   onCycle={(i) => void run(i, () => cycleStockStatus(i.id))}
                   onOpenSheet={(i, opener) => {
-                    setToast(null)
+                    toast.dismiss()
                     setSheet({ itemId: i.id, opener })
                   }}
                 />
@@ -192,8 +185,6 @@ export default function Home({ stock }: { stock: StockState }) {
 
         {stock.items && places.length === 0 && <EmptyState query={query.trim()} filter={filter} total={all.length} />}
       </main>
-
-      <Toast toast={toast} onDismiss={dismissToast} />
 
       {sheetItem && sheet && (
         <UpdateSheet

@@ -83,7 +83,9 @@ Low = filled warm, Out = dashed outline. Keep that in both themes.
 - List grouped by location (Pantry, Fridge, Freezer, Under the sink, Bathroom…);
   section header "PANTRY · 4". Each location is a surface card with rows
   separated by `--line-soft`. Empty locations are hidden (also after filtering).
-- Row: name (+ category below, muted). Right side depends on tracking mode:
+- Row: name (+ category below, muted). **The whole name/category area is a link
+  to Edit product** (full row height, no visible link styling). Right side
+  depends on tracking mode:
   - COUNTED: `[−]  485 g  [+]` — round 44px outline buttons move by the product's
     `step_size`. **The amount itself is a button** (dotted underline) that opens
     the update sheet. Below `min_quantity`, the secondary line adds "· On list"
@@ -128,8 +130,13 @@ Bottom sheet over `--scrim` (tap scrim = close), radius 20px top corners, grab h
   (hint "Spices, oil, dish soap"). Selected = 2px ink border.
 - Count it → "How much?": `[−]  [ 485 | g ]  [+]` — the middle is a **typed
   decimal input** (`inputmode="decimal"`, accepts `,` or `.`), unit shown as a
-  suffix; −/+ nudge by the unit's step. Unit chips below: piece, g, kg, ml, l,
-  pack, tin.
+  suffix; −/+ nudge by the unit's step. Unit chips below, in two
+  labelled rows (the full list is in SPEC.md `default_unit`; the mockup shows
+  an older, shorter set):
+  - **Weight / volume:** g, kg, ml, l.
+  - **Count:** piece, pack, tin, bottle, roll, then a **More** chip that expands
+    the rest in place (jar, box, bag, carton, tube, tub, bar, sachet, bunch).
+    If the selected unit is one of the hidden ones, show it in the visible row.
 - Have / Low / Out → "Right now you…": three equal chips "Have it" / "Low" / "Out".
 - "Where does it live?": location chips.
 - Count it only: optional row "Add to shopping list below  [−] 200 g [+]"
@@ -156,6 +163,29 @@ Bottom sheet over `--scrim` (tap scrim = close), radius 20px top corners, grab h
 - When any *tracked* item is checked, show a `--toast-bg` card above the tab bar:
   "Back home? Mark what you bought as in stock." + contrasting button
   "Put {n} items away" → restocks those products and clears them from the list.
+
+## Screen 4 — Edit product (`reference/EditProduct.dc.html`)
+
+Opened by tapping a product's name on At home. Same building blocks and order
+as Add product, prefilled.
+
+- Header: "Cancel" · title "Edit product". Under it, a muted context line:
+  "Was "{original name}" · {qty} in {location}".
+- Name field, "What is it?" (Food/Household), "Where does it live?" (location chips).
+- **Changing location** shows a note under the chips (`--have-bg` fill,
+  `--have-ink` text, arrow icon): "Moves 1 from Pantry to Bathroom". Save
+  label becomes "Save and move".
+- "How do you track it?" toggle cards. Switching Count it → Have/Low/Out shows
+  a note: "Will be set to Have (you have 1)" (Out if quantity is 0).
+- Count it: unit chips, same two rows and More chip as Add product. If the unit changes, or the mode changes from
+  Have/Low/Out to Count it, show a required amount input labelled in
+  `--low-ink`: "Unit changed — how much do you have now?" / "How much do you
+  have now?". Then step-size chips (weighed units only) and the min-quantity row.
+- Bottom of the form, after a divider: outline button with archive-box icon
+  "Remove from Onhand", and a muted line "Archived, not deleted. You can undo
+  right after." No confirmation dialog — removing returns to Home with the undo toast.
+- Sticky save button: accent "Save changes" / "Save and move" when something
+  changed; otherwise a muted outlined "No changes" (`aria-disabled`).
 
 ## Accessibility (non-negotiable)
 

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import TabBar from './components/TabBar.tsx'
+import ToastProvider from './components/ToastProvider.tsx'
 import { countToBuy } from './lib/format.ts'
 import { useRoute } from './lib/router.ts'
 import { useStock } from './lib/useStock.ts'
@@ -13,11 +14,14 @@ export default function App() {
   const toBuy = useMemo(() => countToBuy(stock.items ?? []), [stock.items])
 
   return (
-    <div className="app">
-      {path === '/add' && <AddProduct name={params.get('name') ?? ''} />}
-      {path === '/shopping' && <ShoppingList toBuy={toBuy} />}
-      {path === '/' && <Home stock={stock} />}
-      <TabBar path={path} toBuy={toBuy} />
-    </div>
+    <ToastProvider>
+      {/* Add product is a focused task: its own sticky button instead of the tab bar */}
+      <div className={path === '/add' ? 'app app--task' : 'app'}>
+        {path === '/add' && <AddProduct key={params.get('name') ?? ''} initialName={params.get('name') ?? ''} stock={stock} />}
+        {path === '/shopping' && <ShoppingList toBuy={toBuy} />}
+        {path === '/' && <Home stock={stock} />}
+        {path !== '/add' && <TabBar path={path} toBuy={toBuy} />}
+      </div>
+    </ToastProvider>
   )
 }

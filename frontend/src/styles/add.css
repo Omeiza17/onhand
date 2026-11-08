@@ -1,0 +1,361 @@
+/* Add product (DESIGN.md, Screen 2) */
+
+.add {
+  /* room for the sticky "Add to …" button */
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
+.add__header {
+  padding: max(20px, env(safe-area-inset-top)) 8px 8px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+
+.add__cancel {
+  justify-self: start;
+  height: var(--tap);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 16px;
+}
+
+.add__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.add__form {
+  padding: 8px var(--gutter) 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field--loose {
+  gap: 12px;
+}
+
+.field__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.field__row {
+  display: flex;
+  gap: 8px;
+}
+
+.field__wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip--grow {
+  flex: 1;
+}
+
+.chip--quiet {
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.chip:disabled {
+  opacity: 0.45;
+}
+
+/* name: focused-style 2px ink border, as in the design */
+.add__name {
+  height: 52px;
+  padding: 0 14px;
+  border-radius: var(--radius-input);
+  border: 2px solid var(--ink);
+  background: var(--surface);
+  font-size: 17px;
+  color: var(--ink);
+  outline: 0;
+}
+
+/* --- autocomplete --- */
+
+.suggest {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-input);
+  overflow: hidden;
+}
+
+.suggest__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 6px 6px 6px 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.suggest__text,
+.restock__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.suggest__name,
+.restock__name {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.suggest__where,
+.restock__where {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.suggest__restock,
+.restock__change {
+  height: var(--tap);
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.suggest__restock--match {
+  background: var(--have-bg);
+  color: var(--have-ink);
+}
+
+.suggest__new {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 8px 14px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.restock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 8px 6px 8px 14px;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-input);
+}
+
+/* --- track it: two toggle cards --- */
+
+.toggle-card {
+  flex: 1;
+  min-height: 64px;
+  padding: 10px 12px;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggle-card[aria-pressed='true'] {
+  border: 2px solid var(--ink);
+  padding: 9px 11px;
+}
+
+.toggle-card__title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.toggle-card__hint {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* --- how much: [−] [ 485 | g ] [+] --- */
+
+.qty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.round-btn--lg {
+  width: 52px;
+  height: 52px;
+}
+
+.qty__box {
+  flex: 1;
+  height: 52px;
+  border-radius: var(--radius-input);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+}
+
+.qty__box:focus-within {
+  border: 2px solid var(--ink);
+  padding: 0 11px;
+}
+
+.qty__box input {
+  width: 96px;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  text-align: right;
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.qty__unit {
+  font-size: 17px;
+  color: var(--muted);
+}
+
+/* --- unit chips: two labelled rows --- */
+
+.unit-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.unit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.unit-row__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* --- new place --- */
+
+.new-place {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.new-place__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.new-place__input input {
+  width: 100%;
+  height: var(--tap);
+  padding: 0 12px;
+  border-radius: var(--radius-input);
+  border: 2px solid var(--ink);
+  background: var(--surface);
+  font-size: 16px;
+  outline: 0;
+}
+
+/* --- shopping-list threshold --- */
+
+.min-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-input);
+}
+
+.min-row__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.min-row__title {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.min-row__hint {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.min-row__value {
+  min-width: 56px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.min-row .round-btn:disabled {
+  opacity: 0.4;
+}
+
+.add__error {
+  margin: 0;
+  color: var(--low-ink);
+  font-weight: 500;
+}
+
+/* --- sticky "Add to {Location}" --- */
+
+.add__footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  max-width: var(--app-max-width);
+  margin: 0 auto;
+  padding: 12px var(--gutter) max(28px, env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+}
+
+.add__save {
+  width: 100%;
+  height: 54px;
+  font-size: 17px;
+}

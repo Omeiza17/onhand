@@ -86,13 +86,58 @@ class StockApiTests extends ApiTestSupport {
 		post(STOCK, "{\"productId\":\"%s\",\"locationId\":\"01900000-0000-7000-8000-000000000000\"}".formatted(rice))
 				.expectStatus().isBadRequest()
 				.expectBody().jsonPath("$.errors[0].field").isEqualTo("locationId");
-		post(STOCK, "{\"productId\":\"%s\",\"quantity\":0}".formatted(rice))
+		post(STOCK, "{\"productId\":\"%s\",\"quantity\":-1}".formatted(rice))
 				.expectStatus().isBadRequest()
 				.expectBody().jsonPath("$.errors[0].field").isEqualTo("quantity");
+		// status on a COUNTED product, unknown status
+		post(STOCK, "{\"productId\":\"%s\",\"status\":\"LOW\"}".formatted(rice))
+				.expectStatus().isBadRequest()
+				.expectBody().jsonPath("$.errors[0].field").isEqualTo("status");
+		post(STOCK, "{\"productId\":\"%s\",\"locationId\":\"%s\",\"status\":\"GONE\"}".formatted(cumin, pantry))
+				.expectStatus().isBadRequest();
 		post(STOCK, "{}").expectStatus().isBadRequest()
 				.expectBody().jsonPath("$.errors[0].field").isEqualTo("productId");
 		assertThat(count("stock_item")).isZero();
 		assertThat(count("stock_event")).isZero();
+	}
+
+	@Test
+	void addStatusCanStartLowOrOutAndUndoRemovesIt() {
+		String json = ok(post(STOCK, "{\"productId\":\"%s\",\"locationId\":\"%s\",\"status\":\"OUT\"}"
+				.formatted(cumin, pantry)));
+		assertThat(read(json, "$.item.status")).isEqualTo("OUT");
+		assertEvent(read(json, "$.eventId"), "ADDED", null, null, "OUT");
+
+		assertThat(read(undo(read(json, "$.eventId")), "$.item")).isNull();
+		assertThat(count("stock_item")).isZero();
+	}
+
+	@Test
+	void addingTheStatusAnItemAlreadyHasWritesNoEvent() {
+		addCumin(); // HAVE
+		String json = ok(post(STOCK, "{\"productId\":\"%s\",\"locationId\":\"%s\"}".formatted(cumin, pantry)));
+		assertThat(read(json, "$.eventId")).isNull();
+		assertThat(read(json, "$.item.status")).isEqualTo("HAVE");
+		assertThat(count("stock_event")).isEqualTo(1);
+	}
+
+	@Test
+	void addingZeroCreatesAnEmptyItemThatUndoRemoves() {
+		String json = ok(post(STOCK, "{\"productId\":\"%s\",\"quantity\":0}".formatted(rice)));
+		assertThat(quantity(json)).isEqualByComparingTo("0");
+		assertEvent(read(json, "$.eventId"), "ADDED", "0", null, null);
+
+		assertThat(read(undo(read(json, "$.eventId")), "$.item")).isNull();
+		assertThat(count("stock_item")).isZero();
+	}
+
+	@Test
+	void addingZeroToAnExistingItemChangesNothing() {
+		addRice("2");
+		String json = ok(post(STOCK, "{\"productId\":\"%s\",\"quantity\":0}".formatted(rice)));
+		assertThat(read(json, "$.eventId")).isNull();
+		assertThat(quantity(json)).isEqualByComparingTo("2");
+		assertThat(count("stock_event")).isEqualTo(1);
 	}
 
 	// --- list ---
