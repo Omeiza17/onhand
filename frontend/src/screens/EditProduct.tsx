@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { errorMessage } from '../api/client.ts'
 import { listLocations } from '../api/locations.ts'
-import { archiveProduct, getProduct, patchProduct, unarchiveProduct } from '../api/products.ts'
+import { archiveProduct, getProduct, patchProduct, setStepSize, unarchiveProduct } from '../api/products.ts'
 import { convertStock, moveStock, undoStockChange } from '../api/stock.ts'
 import type { Kind, Location, Product, ProductPatch, StockItem, TrackingMode, Unit } from '../api/types.ts'
 import { ArrowRightIcon, ArchiveIcon, MinusIcon, PlusIcon } from '../components/Icons.tsx'
@@ -209,16 +209,22 @@ function EditForm({ product, item, places, locations, stock }: FormProps) {
     let text = `Saved ${trimmed}`
     if (moving && from && to) text = `${trimmed}: ${from.name} → ${to.name}`
     else if (converting && item && after) text = `${trimmed}: ${describe(item)} → ${describe(after)}`
-    if (events.length === 0) {
-      toast.show(text)
-      return
-    }
-    // Undo reverses this save's changes at home, newest first
+    // Every save is undoable (changelog 5): reverse this save's stock changes newest-first, then
+    // put the details back — PATCH for name/kind/category/minimum, the step-size endpoint for the
+    // step (it can go back to null = unit default, which PATCH can't). A 409 (name taken since)
+    // shows the error.
     toast.show(text, () => {
       toast.dismiss()
       void (async () => {
         try {
           for (const eventId of [...events].reverse()) await undoStockChange(eventId)
+          await patchProduct(product.id, {
+            name: product.name,
+            kind: product.kind,
+            category: product.category ?? '',
+            minQuantity: product.minQuantity ?? 0,
+          })
+          if (wasCounted) await setStepSize(product.id, product.stepSize)
         } catch (e) {
           toast.show(errorMessage(e))
         }
@@ -333,7 +339,7 @@ function EditForm({ product, item, places, locations, stock }: FormProps) {
             disabled={!canConvert && !wasCounted}
           >
             <span className="toggle-card__title">Count it</span>
-            <span className="toggle-card__hint">3 tins, 485 g, 1 spare</span>
+            <span className="toggle-card__hint">{wasCounted && item ? `Now: ${describe(item)}` : '3 tins, 485 g, 1 spare'}</span>
           </button>
           <button
             type="button"
@@ -343,7 +349,7 @@ function EditForm({ product, item, places, locations, stock }: FormProps) {
             disabled={!canConvert && wasCounted}
           >
             <span className="toggle-card__title">Have / Low / Out</span>
-            <span className="toggle-card__hint">Spices, oil, dish soap</span>
+            <span className="toggle-card__hint">{!wasCounted && item ? `Now: ${describe(item)}` : 'Spices, oil, dish soap'}</span>
           </button>
         </div>
         {!canConvert && (
