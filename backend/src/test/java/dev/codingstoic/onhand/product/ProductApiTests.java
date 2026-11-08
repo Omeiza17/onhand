@@ -170,11 +170,4 @@ class ProductApiTests extends ApiTestSupport {
 		client.delete().uri(missing).exchange().expectStatus().isNotFound();
 	}
 
-	private String createProduct(String json) {
-		return post(PRODUCTS, json)
-				.expectStatus().isCreated()
-				.expectBody(String.class).returnResult().getResponseBody()
-				.replaceAll(".*\"id\":\"([^\"]+)\".*", "$1");
-	}
-
 }

@@ -27,7 +27,7 @@ public abstract class ApiTestSupport {
 
 	@BeforeEach
 	void cleanDatabase() {
-		jdbc.sql("truncate product, location").update();
+		jdbc.sql("truncate stock_event, stock_item, product, location").update();
 	}
 
 	protected RestTestClient.ResponseSpec post(String uri, String json) {
@@ -36,6 +36,17 @@ public abstract class ApiTestSupport {
 
 	protected RestTestClient.ResponseSpec put(String uri, String json) {
 		return client.put().uri(uri).contentType(MediaType.APPLICATION_JSON).body(json).exchange();
+	}
+
+	/** Pulls a top-level or nested string field out of a JSON response. */
+	protected static String field(String json, String name) {
+		return json.replaceAll("(?s).*\"" + name + "\":\"([^\"]+)\".*", "$1");
+	}
+
+	/** Creates a product and returns its id. */
+	protected String createProduct(String json) {
+		return field(post("/api/v1/products", json).expectStatus().isCreated()
+				.expectBody(String.class).returnResult().getResponseBody(), "id");
 	}
 
 	/** Creates a location and returns its id. */

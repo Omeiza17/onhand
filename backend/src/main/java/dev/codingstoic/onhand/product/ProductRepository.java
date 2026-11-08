@@ -68,6 +68,13 @@ public class ProductRepository {
 				.optional();
 	}
 
+	public boolean hasStock(UUID id) {
+		return jdbc.sql("select exists(select 1 from stock_item where product_id = :id)")
+				.param("id", id)
+				.query(Boolean.class)
+				.single();
+	}
+
 	public boolean delete(UUID id) {
 		return jdbc.sql("delete from product where id = :id").param("id", id).update() > 0;
 	}

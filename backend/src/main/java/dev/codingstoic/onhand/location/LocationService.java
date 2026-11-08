@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import dev.codingstoic.onhand.common.ConflictException;
 import dev.codingstoic.onhand.common.NotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,10 +46,20 @@ public class LocationService {
 		}
 	}
 
-	/** Products that used this location as their default keep existing, with no default. */
+	/**
+	 * Products that used this location as their default keep existing, with no default.
+	 * A location that still holds stock can't be deleted (the database refuses).
+	 */
 	@Transactional
 	public void delete(UUID id) {
-		if (!locations.delete(id)) {
+		boolean deleted;
+		try {
+			deleted = locations.delete(id);
+		}
+		catch (DataIntegrityViolationException ex) {
+			throw new ConflictException("This location still has stock items; remove them first.");
+		}
+		if (!deleted) {
 			throw new NotFoundException("Location", id);
 		}
 	}
