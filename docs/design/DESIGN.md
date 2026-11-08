@@ -90,6 +90,11 @@ Low = filled warm, Out = dashed outline. Keep that in both themes.
     `step_size`. **The amount itself is a button** (dotted underline) that opens
     the update sheet. Below `min_quantity`, the secondary line adds "· On list"
     in `--low-ink`.
+  - COUNTED **at 0**: the amount button shows **"Out"** styled like the Out pill
+    (surface fill, 1.5px dashed `--out-bd`, `--out-ink` text, 44px tall, fully
+    rounded) instead of the dotted-underline number; − stays disabled, + still
+    adds one step, tapping "Out" opens the update sheet on **Now I have**.
+    Secondary line adds "· On list". aria-label: "{Name}: out. Set amount".
   - STATUS: one pill button (Have / Low / Out) that cycles HAVE → LOW → OUT → HAVE on tap.
 
 ### Update sheet (tap the amount on a counted row)
@@ -138,7 +143,11 @@ Bottom sheet over `--scrim` (tap scrim = close), radius 20px top corners, grab h
     the rest in place (jar, box, bag, carton, tube, tub, bar, sachet, bunch).
     If the selected unit is one of the hidden ones, show it in the visible row.
 - Have / Low / Out → "Right now you…": three equal chips "Have it" / "Low" / "Out".
-- "Where does it live?": location chips.
+- "Where does it live?": location chips. **No chip is pre-selected for a new
+  product**, except a suggestion: the place of the most recently updated item of
+  the selected kind (follows the Food/Household choice until the user taps a
+  place). With nothing selected the sticky button reads "Choose where it lives"
+  and is disabled.
 - Count it only: optional row "Add to shopping list below  [−] 200 g [+]"
   (min_quantity, moves by the unit's default step; 0 shows "Off").
 - No step-size control here — it uses the unit default and is changed later
@@ -186,6 +195,10 @@ as Add product, prefilled.
   right after." No confirmation dialog — removing returns to Home with the undo toast.
 - Sticky save button: accent "Save changes" / "Save and move" when something
   changed; otherwise a muted outlined "No changes" (`aria-disabled`).
+- **Every save returns to Home with an undo toast**, including detail-only
+  saves ("Saved Brown Basmati rice" + Undo).
+- Toggle-card hints show the product's own current value instead of the
+  generic examples: Count it → "Now: 3.5 kg"; Have / Low / Out → "Now: Low".
 
 ## Accessibility (non-negotiable)
 

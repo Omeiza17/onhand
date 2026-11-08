@@ -97,7 +97,8 @@ in the same transaction so reads stay simple.
 
 ### ShoppingListItem
 - Auto-added when a STATUS product goes `LOW`/`OUT`, or a COUNTED product drops
-  below `min_quantity`.
+  below `min_quantity`, **or a COUNTED product reaches 0 (with or without a
+  minimum) — 0 means out, the same as STATUS `OUT`**.
 - Can also be added manually (including free-text items that aren't products).
 - Checked off when bought; checking off a product item offers to restock it.
 
@@ -165,6 +166,28 @@ in the same transaction so reads stay simple.
   for MVP.
 
 ## Changelog
+
+- **2026-11-08 (5)** — Fixes from the first on-phone test.
+  1. **Counted at 0 = out.** A COUNTED product at 0 goes on the shopping list
+     even without `min_quantity` (tag "Out"), and Home shows it in the Out style
+     (DESIGN.md). Backend impact: the shopping-list "running low" query includes
+     COUNTED quantity = 0; tests for with/without a minimum.
+  2. **No silent default location on Add product.** A new product has no place
+     until one is picked, except a suggestion: the location of the most recently
+     updated stock item of the same `kind` (re-evaluated when kind changes, until
+     the user picks a place). No suggestion → button reads "Choose where it
+     lives" and is disabled. Frontend only.
+  3. **Every Edit save is undoable.** Detail-only saves (name, kind, category,
+     minimum, step size) get Undo too: the frontend keeps the previous values and
+     restores them — `PATCH` for name/kind/category/minimum, the step-size endpoint
+     for step size (it can reset to null = unit default, which `PATCH` can't).
+     With stock events in the same save, undo reverses the events newest-first,
+     then restores details. A 409 on undo (name taken since) shows the error.
+     Backend: none.
+  4. **One product-update path.** `PATCH /products/{id}` is the edit endpoint.
+     Remove `PUT /products/{id}` if nothing uses it; if something does, make it
+     preserve `step_size` and `archived_at`. Test that no update path clears
+     `step_size`.
 
 - **2026-11-08 (4)** — Added the Edit product screen (MVP screen 4). Backend
   impact: Flyway migration adding nullable `archived_at` to product; exclude
