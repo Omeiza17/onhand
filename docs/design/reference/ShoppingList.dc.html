@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Onhand — Shopping list</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0E6B5E}a:hover{color:#0B5148}
+.t-light{--bg:#F5F6F4;--surface:#FFFFFF;--ink:#15181C;--muted:#5B616B;--line:#E4E6E3;--line-soft:#EEF0ED;--accent:#0E6B5E;--on-accent:#FFFFFF;--low-bg:#FDF0D5;--low-ink:#8A4B08;--out-bd:#9AA0A8;--out-ink:#4A5059;--toast-bg:#15181C;--toast-ink:#FFFFFF;--toast-btn:#FFFFFF;--toast-btn-ink:#15181C}
+.t-dark{--bg:#0F1113;--surface:#181B1F;--ink:#ECEEEF;--muted:#A3A9B1;--line:#2A2F35;--line-soft:#22262B;--accent:#3FB8A4;--on-accent:#06201C;--low-bg:#3A2A10;--low-ink:#F5C77A;--out-bd:#6B727B;--out-ink:#C2C7CD;--toast-bg:#ECEEEF;--toast-ink:#15181C;--toast-btn:#15181C;--toast-btn-ink:#ECEEEF}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+button{font:inherit;cursor:pointer}
+input::placeholder{color:var(--muted)}
+input[type=checkbox]{width:24px;height:24px;margin:0;flex:none;cursor:pointer;accent-color:var(--accent)}
+</style>
+</helmet>
+<div style="display: flex; gap: 40px; width: 820px; height: 844px">
+<sc-for list="{{themes}}" as="t" hint-placeholder-count="2">
+<div class="{{t.cls}}" style="width: 390px; height: 844px; box-sizing: border-box; position: relative; display: flex; flex-direction: column; background: var(--bg); color: var(--ink); font-family: Inter, system-ui, sans-serif; overflow: hidden; border-radius: 28px">
+
+  <header style="padding: 28px 20px 12px; display: flex; flex-direction: column; gap: 4px">
+    <div style="font-family: 'Space Grotesk', Inter, sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.04em; color: var(--muted)">ONHAND</div>
+    <h1 style="margin: 0; font-family: 'Space Grotesk', Inter, sans-serif; font-size: 30px; font-weight: 600; letter-spacing: -0.01em">Shopping list</h1>
+    <div style="font-size: 14px; color: var(--muted)">{{toBuy}} to buy · {{inBasket}} in the basket</div>
+  </header>
+
+  <div style="padding: 4px 16px 12px; display: flex; gap: 8px">
+    <label style="flex: 1; display: flex; align-items: center; height: 48px; padding: 0 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px">
+      <span class="sr-only">Add an item</span>
+      <input type="text" value="{{draft}}" onChange="{{onDraft}}" placeholder="Add something…" style="flex: 1; border: 0; outline: 0; background: transparent; font: inherit; font-size: 16px; color: var(--ink); min-width: 0">
+    </label>
+    <button type="button" onClick="{{add}}" aria-label="Add to list" style="width: 48px; height: 48px; border-radius: 12px; border: 0; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; padding: 0">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+    </button>
+  </div>
+
+  <main style="flex: 1; overflow-y: auto; padding: 0 16px 180px; display: flex; flex-direction: column; gap: 20px">
+    <sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+      <section style="display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; padding: 0 4px; font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted)">{{g.title}}</h2>
+        <div style="background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden">
+          <sc-for list="{{g.items}}" as="item" hint-placeholder-count="3">
+            <label style="display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 10px 16px; border-bottom: 1px solid var(--line-soft); cursor: pointer; box-sizing: border-box">
+              <input type="checkbox" checked="{{item.done}}" onChange="{{item.toggle}}">
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                <sc-if value="{{item.done}}" hint-placeholder-val="{{false}}">
+                  <span style="font-size: 16px; color: var(--muted); text-decoration: line-through">{{item.name}}</span>
+                </sc-if>
+                <sc-if value="{{item.open}}" hint-placeholder-val="{{true}}">
+                  <span style="font-size: 16px; font-weight: 500">{{item.name}}</span>
+                </sc-if>
+                <sc-if value="{{item.hasWhere}}" hint-placeholder-val="{{true}}">
+                  <span style="font-size: 13px; color: var(--muted)">{{item.where}}</span>
+                </sc-if>
+              </div>
+              <sc-if value="{{item.isOut}}" hint-placeholder-val="{{false}}">
+                <span style="height: 28px; padding: 0 10px; border-radius: 14px; border: 1.5px dashed var(--out-bd); color: var(--out-ink); font-size: 13px; font-weight: 600; display: flex; align-items: center">Out</span>
+              </sc-if>
+              <sc-if value="{{item.isLow}}" hint-placeholder-val="{{false}}">
+                <span style="height: 28px; padding: 0 10px; border-radius: 14px; background: var(--low-bg); color: var(--low-ink); font-size: 13px; font-weight: 600; display: flex; align-items: center">{{item.tag}}</span>
+              </sc-if>
+            </label>
+          </sc-for>
+        </div>
+      </section>
+    </sc-for>
+  </main>
+
+  <sc-if value="{{showPutAway}}" hint-placeholder-val="{{false}}">
+    <div style="position: absolute; left: 16px; right: 16px; bottom: 96px; display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 16px; background: var(--toast-bg); color: var(--toast-ink); box-shadow: 0 8px 24px rgba(0,0,0,0.25)">
+      <div style="font-size: 14px; padding: 0 4px">Back home? Mark what you bought as in stock.</div>
+      <button type="button" onClick="{{putAway}}" style="height: 48px; border: 0; border-radius: 12px; background: var(--toast-btn); color: var(--toast-btn-ink); font-size: 16px; font-weight: 600">{{putAwayLabel}}</button>
+    </div>
+  </sc-if>
+
+  <nav aria-label="Main" style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; padding: 8px 24px 20px; box-sizing: border-box; background: var(--surface); border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between">
+    <a href="Main.dc.html" style="width: 96px; height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; color: var(--muted); font-size: 12px; font-weight: 500">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path></svg>
+      At home
+    </a>
+    <a href="AddProduct.dc.html" aria-label="Add product" style="width: 56px; height: 56px; border-radius: 28px; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; text-decoration: none">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+    </a>
+    <a href="ShoppingList.dc.html" aria-current="page" style="width: 96px; height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; color: var(--accent); font-size: 12px; font-weight: 600">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"></path><path d="M4 6h.01M4 12h.01M4 18h.01"></path></svg>
+      Shopping
+    </a>
+  </nav>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":820,"height":844}}'>
+var SEED = [
+  { id: 'oil', name: 'Olive oil', where: 'Pantry', auto: true, reason: 'LOW', done: false },
+  { id: 'butter', name: 'Butter', where: 'Fridge', auto: true, reason: 'LOW', done: false },
+  { id: 'dish', name: 'Dish soap', where: 'Under the sink', auto: true, reason: 'LOW', done: false },
+  { id: 'cleaner', name: 'Floor cleaner', where: 'Under the sink · last spare opened', auto: true, reason: 'MIN', done: false },
+  { id: 'spinach', name: 'Spinach', where: 'Fridge', auto: true, reason: 'OUT', done: true },
+  { id: 'bread', name: 'Bread', where: '', auto: false, reason: '', done: false },
+  { id: 'bananas', name: 'Bananas', where: '', auto: false, reason: '', done: true }
+];
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { items: SEED, draft: '', n: 0 };
+  }
+  renderVals() {
+    var self = this;
+    var items = this.state.items;
+    var view = function (i) {
+      return Object.assign({}, i, {
+        open: !i.done,
+        hasWhere: !!i.where,
+        isLow: !i.done && (i.reason === 'LOW' || i.reason === 'MIN'),
+        tag: i.reason === 'MIN' ? 'Below 1' : 'Low',
+        isOut: !i.done && i.reason === 'OUT',
+        toggle: function () {
+          self.setState({ items: self.state.items.map(function (x) { return x.id === i.id ? Object.assign({}, x, { done: !x.done }) : x; }) });
+        }
+      });
+    };
+    var auto = items.filter(function (i) { return i.auto && !i.done; }).map(view);
+    var mine = items.filter(function (i) { return !i.auto && !i.done; }).map(view);
+    var basket = items.filter(function (i) { return i.done; }).map(view);
+    var groups = [];
+    if (auto.length) groups.push({ title: 'Running low at home', items: auto });
+    if (mine.length) groups.push({ title: 'Added by you', items: mine });
+    if (basket.length) groups.push({ title: 'In the basket', items: basket });
+    var tracked = items.filter(function (i) { return i.done && i.auto; }).length;
+
+    return {
+      themes: [{ cls: 't-light' }, { cls: 't-dark' }],
+      groups: groups,
+      toBuy: auto.length + mine.length,
+      inBasket: basket.length,
+      draft: this.state.draft,
+      onDraft: function (e) { self.setState({ draft: e.target.value }); },
+      add: function () {
+        var txt = self.state.draft.trim();
+        if (!txt) return;
+        self.setState({ draft: '', n: self.state.n + 1, items: self.state.items.concat([{ id: 'new' + self.state.n, name: txt, where: '', auto: false, reason: '', done: false }]) });
+      },
+      showPutAway: tracked > 0,
+      putAwayLabel: 'Put ' + tracked + (tracked === 1 ? ' item' : ' items') + ' away',
+      putAway: function () { self.setState({ items: self.state.items.filter(function (i) { return !i.done; }) }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

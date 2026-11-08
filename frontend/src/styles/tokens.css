@@ -1,0 +1,76 @@
+/*
+ * Design tokens — docs/design/DESIGN.md is the source of truth.
+ * Light by default; dark under prefers-color-scheme: dark.
+ */
+:root {
+  color-scheme: light dark;
+
+  /* colour */
+  --bg: #F5F6F4;
+  --surface: #FFFFFF;
+  --ink: #15181C;
+  --muted: #5B616B;
+  --line: #E4E6E3;
+  --line-soft: #EEF0ED;
+  --accent: #0E6B5E;
+  --on-accent: #FFFFFF;
+  --sel-bg: #15181C;
+  --sel-ink: #FFFFFF;
+  --have-bg: #E6F2EF;
+  --have-bd: #CFE5E0;
+  --have-ink: #0B5148;
+  --low-bg: #FDF0D5;
+  --low-bd: #F3DDB0;
+  --low-ink: #8A4B08;
+  --out-bd: #9AA0A8;
+  --out-ink: #4A5059;
+  --toast-bg: #15181C;
+  --toast-ink: #FFFFFF;
+  --toast-action: #8EE0D2;
+  --badge: #8A4B08;
+  --badge-ink: #FFFFFF;
+  --scrim: rgba(21, 24, 28, 0.45);
+
+  /* type */
+  --font-body: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Space Grotesk', 'Inter Variable', Inter, system-ui, sans-serif;
+
+  /* shape & spacing */
+  --gutter: 16px;
+  --gutter-header: 20px;
+  --radius-card: 16px;
+  --radius-input: 12px;
+  --radius-sheet: 20px;
+  --tap: 44px;
+  --app-max-width: 480px;
+  --tabbar-height: calc(64px + max(20px, env(safe-area-inset-bottom)));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0F1113;
+    --surface: #181B1F;
+    --ink: #ECEEEF;
+    --muted: #A3A9B1;
+    --line: #2A2F35;
+    --line-soft: #22262B;
+    --accent: #3FB8A4;
+    --on-accent: #06201C;
+    --sel-bg: #ECEEEF;
+    --sel-ink: #15181C;
+    --have-bg: #123530;
+    --have-bd: #1E4A43;
+    --have-ink: #8EE0D2;
+    --low-bg: #3A2A10;
+    --low-bd: #5A4218;
+    --low-ink: #F5C77A;
+    --out-bd: #6B727B;
+    --out-ink: #C2C7CD;
+    --toast-bg: #ECEEEF;
+    --toast-ink: #15181C;
+    --toast-action: #0B5148;
+    --badge: #F5C77A;
+    --badge-ink: #2A1C05;
+    --scrim: rgba(0, 0, 0, 0.6);
+  }
+}

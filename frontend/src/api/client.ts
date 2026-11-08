@@ -40,3 +40,21 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   }
   return (res.status === 204 ? undefined : await res.json()) as T
 }
+
+/** JSON body helper: `request(path, json('POST', body))`. */
+export function json(method: string, body?: unknown): RequestInit {
+  return { method, body: body === undefined ? undefined : JSON.stringify(body) }
+}
+
+/** A short, human message for any failure from `request`. */
+export function errorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    const fieldErrors = error.problem?.errors
+    if (Array.isArray(fieldErrors) && fieldErrors.length > 0) {
+      const first = fieldErrors[0] as { message?: string }
+      if (first.message) return first.message
+    }
+    return error.message
+  }
+  return 'Could not reach Onhand. Check your connection.'
+}

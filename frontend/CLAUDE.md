@@ -16,6 +16,8 @@
 - Quick update = one tap, with an undo toast. No confirmation dialogs for
   routine changes.
 - Light and dark mode via `prefers-color-scheme`.
+- **The agreed UI is in `docs/design/DESIGN.md` — read it before any UI work
+    and match it.** The `.dc.html` files there are mockups for reference only.
 
 ## Code layout
 
@@ -38,3 +40,11 @@ src/
 - If the service worker or manifest filenames change, update the no-cache
   rules in `nginx.conf` to match.
 - Keep dependencies minimal; justify each one in the summary.
+
+## Dev helpers
+
+- `API_TARGET=http://localhost:8081 npm run dev` — proxy `/api` to a backend on
+  another port (default `http://localhost:8080`).
+- `npm run seed` — loads the example household from the design mockups through
+  the API (`API=…/api/v1` to target another backend). Re-runnable.
+- `npm run generate-pwa-assets` — regenerates the app icons from `public/icon.svg`.

@@ -20,7 +20,7 @@ import org.springframework.stereotype.Repository;
 class StockItemRepository {
 
 	private static final String VIEW = """
-			select s.id, s.product_id, p.name as product_name, p.kind, p.category, p.tracking_mode, p.default_unit, p.step_size,
+			select s.id, s.product_id, p.name as product_name, p.kind, p.category, p.tracking_mode, p.default_unit, p.step_size, p.min_quantity,
 			       s.location_id, l.name as location_name, l.sort_order as location_sort_order,
 			       s.quantity, s.status, s.expires_on, s.updated_at
 			from stock_item s
@@ -134,6 +134,7 @@ class StockItemRepository {
 				rs.getInt("location_sort_order"),
 				quantity,
 				quantity == null ? null : Product.effectiveStep(unit, rs.getBigDecimal("step_size")),
+				rs.getBigDecimal("min_quantity"),
 				status == null ? null : StockStatus.valueOf(status),
 				rs.getObject("expires_on", LocalDate.class),
 				rs.getObject("updated_at", OffsetDateTime.class).toInstant());

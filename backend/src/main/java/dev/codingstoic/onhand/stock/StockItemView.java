@@ -12,6 +12,7 @@ import dev.codingstoic.onhand.product.Unit;
 /**
  * A stock row with what the Home screen needs to show and group it. {@code stepSize} is how far
  * one tap on −/+ moves (the product's step or its unit default); null for STATUS items.
+ * {@code minQuantity}: below it the item belongs on the shopping list (COUNTED only, optional).
  */
 public record StockItemView(
 		UUID id,
@@ -26,6 +27,7 @@ public record StockItemView(
 		int locationSortOrder,
 		BigDecimal quantity,
 		BigDecimal stepSize,
+		BigDecimal minQuantity,
 		StockStatus status,
 		LocalDate expiresOn,
 		Instant updatedAt) {

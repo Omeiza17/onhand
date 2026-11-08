@@ -45,6 +45,7 @@ class StockApiTests extends ApiTestSupport {
 		assertThat(read(json, "$.item.unit")).isEqualTo("kg");
 		assertThat(quantity(json)).isEqualByComparingTo("2");
 		assertThat(read(json, "$.item.status")).isNull();
+		assertThat(read(json, "$.item.minQuantity")).isNull();
 		assertEvent(read(json, "$.eventId"), "ADDED", "2", null, null);
 	}
 
@@ -231,6 +232,16 @@ class StockApiTests extends ApiTestSupport {
 		// an explicit amount still overrides the step
 		json = ok(post(STOCK + "/" + item + "/increase", "{\"amount\":15}"));
 		assertThat(quantity(json)).isEqualByComparingTo("350");
+	}
+
+	@Test
+	void listingCarriesTheProductsMinimum() {
+		String eggs = createProduct("{\"name\":\"Eggs\",\"trackingMode\":\"COUNTED\",\"minQuantity\":4}");
+		post(STOCK, "{\"productId\":\"%s\",\"locationId\":\"%s\",\"quantity\":3}".formatted(eggs, fridge))
+				.expectStatus().isOk();
+
+		client.get().uri(STOCK).exchange()
+				.expectBody().jsonPath("$[0].minQuantity").isEqualTo(4.0);
 	}
 
 	@Test
