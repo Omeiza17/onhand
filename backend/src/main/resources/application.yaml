@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: onhand-api
+
+  # Virtual threads for request handling
+  threads:
+    virtual:
+      enabled: true
+
+  # Database (override via SPRING_DATASOURCE_* env vars in k3s)
+  datasource:
+    url: jdbc:postgresql://localhost:5432/onhand
+    username: onhand
+    password: onhand
+
+  jdbc:
+    template:
+      query-timeout: 10s
+
+  # Store and serve timestamps in UTC
+  jackson:
+    time-zone: UTC
+
+  # Errors as RFC 9457 Problem Details
+  mvc:
+    problemdetails:
+      enabled: true
+
+# Actuator: health (with liveness/readiness probes) only, nothing else exposed
+management:
+  endpoints:
+    access:
+      default: none
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      access: read-only
+      probes:
+        enabled: true
+      show-details: never

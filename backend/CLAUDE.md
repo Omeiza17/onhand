@@ -26,7 +26,7 @@ WebFlux, or a "classic" starter. Ask first if you think one is needed.
 ## Code layout
 
 ```
-com.onhand
+dev.codingstoic.onhand
 ├── OnhandApplication.java
 ├── common/        # ProblemDetail handling, shared types
 ├── location/      # controller, service, repository, dto
@@ -54,12 +54,21 @@ classes using `JdbcClient` with explicit SQL.
 
 - Integration tests against real Postgres via Testcontainers. Local Docker
   runtime is Colima — if Testcontainers can't find Docker, set `DOCKER_HOST`
-  to Colima's socket rather than switching to H2.
+  to Colima's socket rather than switching to H2. Colima has no
+  `/var/run/docker.sock` on the host, so also set
+  `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock` (path inside
+  the VM) or Ryuk fails to start. Both must be env vars — Testcontainers
+  ignores these in `~/.testcontainers.properties`:
+  ```
+  DOCKER_HOST=unix://$HOME/.colima/default/docker.sock \
+  TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock ./mvnw verify
+  ```
+  In IntelliJ, put the same two vars in the JUnit run configuration template.
 - Each slice: happy path + main validation failures + one transaction/undo test
   where relevant.
 
 ## Local run
 
 Postgres for local dev:
-`docker run -d --name onhand-db -e POSTGRES_DB=onhand -e POSTGRES_USER=onhand -e POSTGRES_PASSWORD=onhand -p 5432:5432 postgres:17`
-(check the current Postgres major version)
+`docker run -d --name onhand-db -e POSTGRES_DB=onhand -e POSTGRES_USER=onhand -e POSTGRES_PASSWORD=onhand -p 5432:5432 postgres:18-alpine`
+(Postgres 18 is the current stable major as of Nov 2026; check again when upgrading)
