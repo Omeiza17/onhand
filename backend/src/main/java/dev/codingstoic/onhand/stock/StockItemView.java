@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import dev.codingstoic.onhand.product.Kind;
 import dev.codingstoic.onhand.product.TrackingMode;
 import dev.codingstoic.onhand.product.Unit;
 
@@ -13,6 +14,7 @@ public record StockItemView(
 		UUID id,
 		UUID productId,
 		String productName,
+		Kind kind,
 		String category,
 		TrackingMode trackingMode,
 		Unit unit,

@@ -2,14 +2,18 @@
 
 ## Problem
 
-I have a lot of food and ingredients at home and lose track of what I have.
+I keep a lot of things at home that get used up and re-bought — food and
+ingredients, but also household consumables (cleaning products, toiletries,
+toilet paper, bin bags, batteries) — and I lose track of what I have.
 The one question this app must answer, quickly, from my phone:
 
 > **"What do I have at home right now, and where is it?"**
 
 Shopping is the second use: knowing what's low or gone before/while I'm at the shop.
 
-Recipes are **out of scope** — they live in Obsidian.
+**Scope line: things that get used up and re-bought.** Durable belongings
+(appliances, tools, chargers) are out of scope — they have no in/out flow and
+would clutter the list. Recipes are also **out of scope** — they live in Obsidian.
 
 ## Users
 
@@ -29,12 +33,14 @@ the last update. Every design decision should make logging faster:
 ## Core concepts
 
 ### Product
-A kind of thing I keep (e.g. "Basmati rice", "Eggs", "Cumin").
+A kind of thing I keep (e.g. "Basmati rice", "Eggs", "Cumin", "Floor cleaner",
+"Toilet paper").
 
 | Field | Notes |
 |---|---|
 | name | required, unique (case-insensitive) |
-| category | optional free text or simple list (Grains, Dairy, Spices…) |
+| kind | **new** — `FOOD` or `HOUSEHOLD`, required, default `FOOD`. Drives the Home filter. |
+| category | optional free text or simple list (Grains, Dairy, Spices, Cleaning, Toiletries…) |
 | tracking_mode | `COUNTED` or `STATUS` (see below) |
 | default_unit | for COUNTED only: `piece`, `g`, `kg`, `ml`, `l`, `pack`, `tin` |
 | default_location | optional |
@@ -42,15 +48,23 @@ A kind of thing I keep (e.g. "Basmati rice", "Eggs", "Cumin").
 | barcode | optional, nullable, unique when present (Phase 2) |
 
 ### Tracking modes
-- **COUNTED** — amount matters: "3 tins", "1.5 kg". Quick update = +/−.
-- **STATUS** — amount not worth logging (spices, oil, salt). Values: `HAVE`, `LOW`, `OUT`.
-  Quick update = tap to cycle.
+- **COUNTED** — amount matters: "3 tins", "485 g", "6 rolls". Quick update = +/−
+  for discrete units; weighed/measured units need exact entry (see Open decisions).
+- **STATUS** — amount not worth logging (spices, oil, salt, floor cleaner).
+  Values: `HAVE`, `LOW`, `OUT`. Quick update = tap to cycle.
 
 This hybrid is the main thing that keeps the app easier to maintain than tools
 that count everything.
 
+**Recommended pattern for household consumables — track the spare.** For things
+you only notice are empty mid-use (cleaning products, shampoo), track spares as
+COUNTED with `min_quantity = 1` (e.g. "Floor cleaner: 1 spare"). Opening the last
+spare = one tap −, which puts it on the shopping list while a bottle is still in
+use. This is guidance, not a separate feature; the model already supports it.
+
 ### Location
-Where things live: Pantry, Fridge, Freezer, etc. User-defined, ordered.
+Where things live. User-defined, ordered. Seed/examples: Pantry, Fridge, Freezer,
+Under the sink, Bathroom, Laundry.
 
 ### StockItem (current state)
 One row per product per location.
@@ -87,20 +101,24 @@ in the same transaction so reads stay simple.
 ## MVP screens
 
 1. **Home — "What's at home"**
-   Everything grouped by location, with search. Each row shows quantity or status.
+   Everything grouped by location, with search and a filter: **All · Food ·
+   Household** (by Product `kind`). Each row shows quantity or status.
    This is the core of the app.
 2. **Quick update**
    Tap a row: +/− for COUNTED, cycle HAVE→LOW→OUT for STATUS. No forms.
    An undo toast after every change.
 3. **Add product**
-   Name (with autocomplete against existing products), tracking mode, location,
-   optional quantity. Under 10 seconds.
+   Name (with autocomplete against existing products), kind (Food/Household),
+   tracking mode, location, optional quantity. The quantity field accepts typed
+   decimal input (e.g. 485 g), with +/− as a shortcut. Under 10 seconds.
 4. **Shopping list**
    Generated items + manual items, check off while shopping.
 
 ## Out of scope (MVP)
 
 - Recipes, meal planning
+- Durable belongings / home inventory (appliances, tools) — different app
+- Grouping the shopping list by shop (supermarket, pharmacy, hardware) — later, if needed
 - Barcode scanning (Phase 2)
 - Expiry alerts UI (Phase 2; data field exists)
 - Prices, nutrition
@@ -124,6 +142,22 @@ in the same transaction so reads stay simple.
 - PostgreSQL, schema managed by Flyway.
 - Works acceptably on a phone over home Wi-Fi; offline support is not required
   for MVP.
+
+## Open decisions
+
+- **Partial use of weighed items from Home** (e.g. used 200 g of 485 g chicken).
+  Options: (a) tap the quantity to type an exact amount ("used 200 g" or
+  "now 285 g"); (b) per-product step size for +/−. Leaning (a) for g/kg/ml/l
+  units, keeping one-tap +/− for piece/pack/tin. Decide before slice 3.
+
+## Changelog
+
+- **2026-11-08** — Scope widened from food to all used-up-and-re-bought household
+  items. Added Product `kind` (FOOD/HOUSEHOLD) + Home filter; household example
+  locations; "track the spare" pattern; typed quantity on Add product. Backend
+  impact (slices 1–2 already built): new Flyway migration adding `kind` to
+  product (NOT NULL, default FOOD), expose it in product DTOs/endpoints, add an
+  optional `kind` filter to the stock/Home listing endpoint, tests for both.
 
 ## Build order (vertical slices)
 

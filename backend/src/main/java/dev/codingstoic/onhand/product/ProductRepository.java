@@ -15,7 +15,7 @@ import org.springframework.stereotype.Repository;
 public class ProductRepository {
 
 	private static final String COLUMNS =
-			"id, name, category, tracking_mode, default_unit, default_location_id, min_quantity, barcode";
+			"id, name, kind, category, tracking_mode, default_unit, default_location_id, min_quantity, barcode";
 
 	private final JdbcClient jdbc;
 
@@ -45,8 +45,8 @@ public class ProductRepository {
 
 	public Product insert(ProductRequest p) {
 		return jdbc.sql("""
-				insert into product (name, category, tracking_mode, default_unit, default_location_id, min_quantity, barcode)
-				values (:name, :category, :trackingMode, :defaultUnit, :defaultLocationId, :minQuantity, :barcode)
+				insert into product (name, kind, category, tracking_mode, default_unit, default_location_id, min_quantity, barcode)
+				values (:name, :kind, :category, :trackingMode, :defaultUnit, :defaultLocationId, :minQuantity, :barcode)
 				returning\s""" + COLUMNS)
 				.params(params(p))
 				.query(ProductRepository::map)
@@ -57,7 +57,7 @@ public class ProductRepository {
 	public Optional<Product> update(UUID id, ProductRequest p) {
 		return jdbc.sql("""
 				update product
-				set name = :name, category = :category, tracking_mode = :trackingMode,
+				set name = :name, kind = :kind, category = :category, tracking_mode = :trackingMode,
 				    default_unit = :defaultUnit, default_location_id = :defaultLocationId,
 				    min_quantity = :minQuantity, barcode = :barcode, updated_at = now()
 				where id = :id
@@ -82,6 +82,7 @@ public class ProductRepository {
 	private static Map<String, Object> params(ProductRequest p) {
 		Map<String, Object> params = new HashMap<>();
 		params.put("name", p.name());
+		params.put("kind", p.kind().name());
 		params.put("category", p.category());
 		params.put("trackingMode", p.trackingMode().name());
 		params.put("defaultUnit", p.defaultUnit() == null ? null : p.defaultUnit().code());
@@ -100,6 +101,7 @@ public class ProductRepository {
 		return new Product(
 				rs.getObject("id", UUID.class),
 				rs.getString("name"),
+				Kind.valueOf(rs.getString("kind")),
 				rs.getString("category"),
 				TrackingMode.valueOf(rs.getString("tracking_mode")),
 				unit == null ? null : Unit.fromCode(unit),

@@ -162,6 +162,58 @@ class ProductApiTests extends ApiTestSupport {
 				.expectBody().jsonPath("$.detail").value(String.class, d -> assertThat(d).contains("barcode"));
 	}
 
+	// --- kind (FOOD / HOUSEHOLD) ---
+
+	@Test
+	void kindDefaultsToFoodAndCanBeHousehold() {
+		post(PRODUCTS, "{\"name\":\"Eggs\",\"trackingMode\":\"COUNTED\"}")
+				.expectStatus().isCreated()
+				.expectBody().jsonPath("$.kind").isEqualTo("FOOD");
+
+		String id = createProduct("{\"name\":\"Toilet paper\",\"kind\":\"HOUSEHOLD\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"pack\"}");
+		client.get().uri(PRODUCTS + "/" + id).exchange()
+				.expectBody().jsonPath("$.kind").isEqualTo("HOUSEHOLD");
+		client.get().uri(PRODUCTS + "?q=toilet").exchange()
+				.expectBody().jsonPath("$[0].kind").isEqualTo("HOUSEHOLD");
+	}
+
+	@Test
+	void updateChangesKindOrKeepsItWhenOmitted() {
+		String id = createProduct("{\"name\":\"Floor cleaner\",\"kind\":\"HOUSEHOLD\",\"trackingMode\":\"STATUS\"}");
+
+		// omitted: kept, not reset to FOOD
+		put(PRODUCTS + "/" + id, "{\"name\":\"Floor cleaner\",\"trackingMode\":\"STATUS\",\"category\":\"Cleaning\"}")
+				.expectStatus().isOk()
+				.expectBody()
+				.jsonPath("$.kind").isEqualTo("HOUSEHOLD")
+				.jsonPath("$.category").isEqualTo("Cleaning");
+
+		put(PRODUCTS + "/" + id, "{\"name\":\"Floor cleaner\",\"kind\":\"FOOD\",\"trackingMode\":\"STATUS\"}")
+				.expectStatus().isOk()
+				.expectBody().jsonPath("$.kind").isEqualTo("FOOD");
+	}
+
+	@Test
+	void unknownKindIs400() {
+		post(PRODUCTS, "{\"name\":\"Batteries\",\"kind\":\"DURABLE\",\"trackingMode\":\"COUNTED\"}")
+				.expectStatus().isBadRequest()
+				.expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON);
+		String id = createProduct("{\"name\":\"Batteries\",\"kind\":\"HOUSEHOLD\",\"trackingMode\":\"COUNTED\"}");
+		put(PRODUCTS + "/" + id, "{\"name\":\"Batteries\",\"kind\":\"food\",\"trackingMode\":\"COUNTED\"}")
+				.expectStatus().isBadRequest();
+	}
+
+	@Test
+	void productsWrittenWithoutKindGetFoodFromTheMigrationDefault() {
+		// as rows created before V4 (or by plain SQL) look: no kind column given
+		jdbc.sql("insert into product (name, tracking_mode) values ('Old rice', 'STATUS')").update();
+
+		client.get().uri(PRODUCTS).exchange()
+				.expectBody().jsonPath("$[0].kind").isEqualTo("FOOD");
+		assertThat(jdbc.sql("select kind from product where name = 'Old rice'").query(String.class).single())
+				.isEqualTo("FOOD");
+	}
+
 	@Test
 	void unknownIdIs404() {
 		String missing = PRODUCTS + "/01900000-0000-7000-8000-000000000000";

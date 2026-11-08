@@ -112,6 +112,51 @@ class StockApiTests extends ApiTestSupport {
 				.jsonPath("$[0].updatedAt").exists();
 	}
 
+	@Test
+	void listFiltersByKindAndEachItemCarriesKind() {
+		String toiletPaper = createProduct("""
+				{"name":"Toilet paper","kind":"HOUSEHOLD","trackingMode":"COUNTED","defaultUnit":"pack"}
+				""");
+		String bathroom = createLocation("Bathroom");
+		post(STOCK, "{\"productId\":\"%s\",\"locationId\":\"%s\",\"quantity\":6}".formatted(toiletPaper, bathroom))
+				.expectStatus().isOk();
+		post(STOCK, "{\"productId\":\"%s\",\"locationId\":\"%s\"}".formatted(cumin, pantry)).expectStatus().isOk();
+		post(STOCK, "{\"productId\":\"%s\"}".formatted(rice)).expectStatus().isOk();
+
+		// no filter = All
+		client.get().uri(STOCK).exchange()
+				.expectBody()
+				.jsonPath("$[*].productName").isEqualTo(List.of("Basmati rice", "Cumin", "Toilet paper"))
+				.jsonPath("$[*].kind").isEqualTo(List.of("FOOD", "FOOD", "HOUSEHOLD"));
+
+		// Food keeps location grouping and name order
+		client.get().uri(STOCK + "?kind=FOOD").exchange()
+				.expectStatus().isOk()
+				.expectBody()
+				.jsonPath("$[*].productName").isEqualTo(List.of("Basmati rice", "Cumin"))
+				.jsonPath("$[*].locationName").isEqualTo(List.of("Pantry", "Pantry"));
+
+		client.get().uri(STOCK + "?kind=HOUSEHOLD").exchange()
+				.expectStatus().isOk()
+				.expectBody()
+				.jsonPath("$.length()").isEqualTo(1)
+				.jsonPath("$[0].productName").isEqualTo("Toilet paper")
+				.jsonPath("$[0].locationName").isEqualTo("Bathroom")
+				.jsonPath("$[0].kind").isEqualTo("HOUSEHOLD");
+	}
+
+	@Test
+	void kindFilterWithNoMatchesIsEmptyAndUnknownKindIs400() {
+		post(STOCK, "{\"productId\":\"%s\"}".formatted(rice)).expectStatus().isOk();
+
+		client.get().uri(STOCK + "?kind=HOUSEHOLD").exchange()
+				.expectStatus().isOk()
+				.expectBody().jsonPath("$.length()").isEqualTo(0);
+		client.get().uri(STOCK + "?kind=DURABLE").exchange()
+				.expectStatus().isBadRequest()
+				.expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON);
+	}
+
 	// --- quick update ---
 
 	@Test

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import dev.codingstoic.onhand.product.Kind;
 import dev.codingstoic.onhand.product.TrackingMode;
 import dev.codingstoic.onhand.product.Unit;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -18,7 +19,7 @@ import org.springframework.stereotype.Repository;
 class StockItemRepository {
 
 	private static final String VIEW = """
-			select s.id, s.product_id, p.name as product_name, p.category, p.tracking_mode, p.default_unit,
+			select s.id, s.product_id, p.name as product_name, p.kind, p.category, p.tracking_mode, p.default_unit,
 			       s.location_id, l.name as location_name, l.sort_order as location_sort_order,
 			       s.quantity, s.status, s.expires_on, s.updated_at
 			from stock_item s
@@ -34,9 +35,16 @@ class StockItemRepository {
 		this.jdbc = jdbc;
 	}
 
-	/** Everything at home, ordered for display: by location order, then product name. */
-	List<StockItemView> findAllViews() {
-		return jdbc.sql(VIEW + " order by l.sort_order, lower(l.name), lower(p.name)")
+	/**
+	 * Everything at home, or only one kind of product when {@code kind} is given, ordered for
+	 * display: by location order, then product name.
+	 */
+	List<StockItemView> findAllViews(Kind kind) {
+		return jdbc.sql(VIEW + """
+				where (cast(:kind as text) is null or p.kind = :kind)
+				order by l.sort_order, lower(l.name), lower(p.name)
+				""")
+				.param("kind", kind == null ? null : kind.name())
 				.query(StockItemRepository::mapView)
 				.list();
 	}
@@ -114,6 +122,7 @@ class StockItemRepository {
 				rs.getObject("id", UUID.class),
 				rs.getObject("product_id", UUID.class),
 				rs.getString("product_name"),
+				Kind.valueOf(rs.getString("kind")),
 				rs.getString("category"),
 				TrackingMode.valueOf(rs.getString("tracking_mode")),
 				unit == null ? null : Unit.fromCode(unit),

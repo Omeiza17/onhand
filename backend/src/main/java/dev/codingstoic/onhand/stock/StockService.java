@@ -10,6 +10,7 @@ import dev.codingstoic.onhand.common.ConflictException;
 import dev.codingstoic.onhand.common.InvalidRequestException;
 import dev.codingstoic.onhand.common.NotFoundException;
 import dev.codingstoic.onhand.location.LocationRepository;
+import dev.codingstoic.onhand.product.Kind;
 import dev.codingstoic.onhand.product.Product;
 import dev.codingstoic.onhand.product.ProductRepository;
 import dev.codingstoic.onhand.product.TrackingMode;
@@ -39,8 +40,9 @@ public class StockService {
 		this.locations = locations;
 	}
 
-	public List<StockItemView> list() {
-		return items.findAllViews();
+	/** What's at home; {@code kind} null means all kinds. */
+	public List<StockItemView> list(Kind kind) {
+		return items.findAllViews(kind);
 	}
 
 	/** Puts a product at a location, creating the stock row if needed. */

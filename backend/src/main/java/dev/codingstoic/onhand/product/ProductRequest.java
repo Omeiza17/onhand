@@ -12,9 +12,11 @@ import jakarta.validation.constraints.Size;
 /**
  * Body for creating or replacing a product. Only {@code name} and {@code trackingMode} are
  * required; {@code defaultUnit} and {@code minQuantity} are for COUNTED products only.
+ * {@code kind} defaults to FOOD on create and is kept as it was when omitted on update.
  */
 public record ProductRequest(
 		@NotBlank @Size(max = 100) String name,
+		Kind kind,
 		@Size(max = 50) String category,
 		@NotNull TrackingMode trackingMode,
 		Unit defaultUnit,

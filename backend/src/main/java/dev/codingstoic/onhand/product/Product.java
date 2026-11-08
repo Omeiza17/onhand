@@ -7,6 +7,7 @@ import java.util.UUID;
 public record Product(
 		UUID id,
 		String name,
+		Kind kind,
 		String category,
 		TrackingMode trackingMode,
 		Unit defaultUnit,

@@ -34,7 +34,7 @@ public class ProductService {
 
 	@Transactional
 	public Product create(ProductRequest request) {
-		ProductRequest product = normalize(request);
+		ProductRequest product = normalize(request, Kind.FOOD);
 		try {
 			return products.insert(product);
 		}
@@ -43,11 +43,14 @@ public class ProductService {
 		}
 	}
 
-	/** Changing the tracking mode is refused while the product has stock (it would not fit). */
+	/**
+	 * Replaces the product. An omitted {@code kind} keeps the current one. Changing the tracking
+	 * mode is refused while the product has stock (it would not fit).
+	 */
 	@Transactional
 	public Product update(UUID id, ProductRequest request) {
-		ProductRequest product = normalize(request);
 		Product current = get(id);
+		ProductRequest product = normalize(request, current.kind());
 		if (current.trackingMode() != product.trackingMode() && products.hasStock(id)) {
 			throw new ConflictException("Can't change the tracking mode of a product that has stock.");
 		}
@@ -68,11 +71,11 @@ public class ProductService {
 	}
 
 	/**
-	 * Applies the rules bean validation can't: trims text, turns blank optionals into null,
-	 * keeps unit/min quantity to COUNTED products (defaulting the unit to piece), and checks
-	 * the default location exists.
+	 * Applies the rules bean validation can't: fills in {@code defaultKind} when kind is omitted,
+	 * trims text, turns blank optionals into null, keeps unit/min quantity to COUNTED products
+	 * (defaulting the unit to piece), and checks the default location exists.
 	 */
-	private ProductRequest normalize(ProductRequest r) {
+	private ProductRequest normalize(ProductRequest r, Kind defaultKind) {
 		Unit unit = r.defaultUnit();
 		if (r.trackingMode() == TrackingMode.STATUS) {
 			if (r.defaultUnit() != null) {
@@ -88,7 +91,8 @@ public class ProductService {
 		if (r.defaultLocationId() != null && !locations.existsById(r.defaultLocationId())) {
 			throw new InvalidRequestException("defaultLocationId", "location does not exist");
 		}
-		return new ProductRequest(r.name().strip(), blankToNull(r.category()), r.trackingMode(), unit,
+		Kind kind = r.kind() != null ? r.kind() : defaultKind;
+		return new ProductRequest(r.name().strip(), kind, blankToNull(r.category()), r.trackingMode(), unit,
 				r.defaultLocationId(), r.minQuantity(), blankToNull(r.barcode()));
 	}
 
