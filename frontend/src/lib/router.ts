@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 // A tiny History-API router: three screens don't need a routing library.
 
-export type Path = '/' | '/add' | '/shopping'
+export type Path = '/' | '/add' | '/shopping' | '/product'
 
 const NAV_EVENT = 'onhand:navigate'
 
@@ -24,9 +24,12 @@ export function navigate(to: string) {
   window.scrollTo(0, 0)
 }
 
-export function useRoute(): { path: Path; params: URLSearchParams } {
+/** The current screen; `/product/{id}` comes back as path `/product` with `id`. */
+export function useRoute(): { path: Path; params: URLSearchParams; id?: string } {
   const location = useSyncExternalStore(subscribe, snapshot)
   const url = new URL(location, window.location.origin)
+  const product = url.pathname.match(/^\/product\/([0-9a-f-]{36})$/)
+  if (product) return { path: '/product', params: url.searchParams, id: product[1] }
   const path = (['/', '/add', '/shopping'] as const).find((p) => p === url.pathname) ?? '/'
   return { path, params: url.searchParams }
 }

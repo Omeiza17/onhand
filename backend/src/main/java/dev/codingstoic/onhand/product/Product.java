@@ -6,7 +6,8 @@ import java.util.UUID;
 /**
  * A kind of thing kept at home, e.g. "Basmati rice", "Eggs", "Cumin". For COUNTED products,
  * {@code stepSize} is the stored step (null = unit default) and {@code effectiveStepSize} is
- * what one tap on −/+ actually moves; both are null for STATUS products.
+ * what one tap on −/+ actually moves; both are null for STATUS products. {@code archived}
+ * products are hidden from Home, search and autocomplete.
  */
 public record Product(
 		UUID id,
@@ -19,7 +20,8 @@ public record Product(
 		BigDecimal minQuantity,
 		BigDecimal stepSize,
 		BigDecimal effectiveStepSize,
-		String barcode) {
+		String barcode,
+		boolean archived) {
 
 	/** How far one tap moves for a product with this unit and stored step. */
 	public static BigDecimal effectiveStep(Unit unit, BigDecimal stepSize) {

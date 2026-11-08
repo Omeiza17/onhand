@@ -94,6 +94,16 @@
   gap: 2px;
 }
 
+/* name area = link to Edit product: full row height, no visible link styling */
+.row__link {
+  align-self: stretch;
+  justify-content: center;
+  margin: -10px 0 -10px -16px;
+  padding: 10px 0 10px 16px;
+  color: inherit;
+  text-decoration: none;
+}
+
 .row__name {
   font-size: 16px;
   font-weight: 500;
@@ -111,6 +121,15 @@
 
 .row__meta:empty {
   display: none;
+}
+
+.row__name,
+.row__meta {
+  display: block;
+}
+
+.row__meta {
+  display: flex;
 }
 
 .row__on-list {

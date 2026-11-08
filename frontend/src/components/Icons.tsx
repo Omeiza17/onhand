@@ -56,6 +56,20 @@ export const SearchIcon = (p: IconProps) => (
   </Svg>
 )
 
+export const ArrowRightIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </Svg>
+)
+
+export const ArchiveIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3" y="4" width="18" height="5" rx="1" />
+    <path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9" />
+    <path d="M10 13h4" />
+  </Svg>
+)
+
 export const UndoIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M9 14L4 9l5-5" />

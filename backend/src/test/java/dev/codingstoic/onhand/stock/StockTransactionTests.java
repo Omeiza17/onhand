@@ -35,6 +35,15 @@ class StockTransactionTests extends ApiTestSupport {
 				.formatted(createProduct("{\"name\":\"Salt\",\"trackingMode\":\"STATUS\"}"), pantry))
 				.expectStatus().is5xxServerError();
 
+		// a move rolls back too: the item stays where it was, the default place unchanged
+		String bathroom = createLocation("Bathroom");
+		post("/api/v1/stock/" + item + "/move", "{\"locationId\":\"%s\"}".formatted(bathroom))
+				.expectStatus().is5xxServerError();
+		assertThat(jdbc.sql("select location_id::text from stock_item where id = ?::uuid").param(item)
+				.query(String.class).single()).isEqualTo(pantry);
+		assertThat(jdbc.sql("select default_location_id::text from product where id = ?::uuid").param(rice)
+				.query(String.class).single()).isEqualTo(pantry);
+
 		assertThat(jdbc.sql("select quantity from stock_item where id = ?::uuid").param(item)
 				.query(BigDecimal.class).single()).isEqualByComparingTo("2");
 		assertThat(jdbc.sql("select count(*) from stock_item").query(Integer.class).single()).isEqualTo(1);

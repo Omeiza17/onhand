@@ -67,6 +67,18 @@ class StockController {
 		return ResponseEntity.noContent().build();
 	}
 
+	/** Edit product, new location: moves the whole item there. */
+	@PostMapping("/{id}/move")
+	StockChange move(@PathVariable UUID id, @Valid @RequestBody MoveRequest request) {
+		return service.move(id, request);
+	}
+
+	/** Edit product, new tracking mode or unit, with the amount at home made explicit. */
+	@PostMapping("/{id}/convert")
+	StockChange convert(@PathVariable UUID id, @Valid @RequestBody ConvertRequest request) {
+		return service.convert(id, request);
+	}
+
 	@PostMapping("/events/{eventId}/undo")
 	StockChange undo(@PathVariable UUID eventId) {
 		return service.undo(eventId);

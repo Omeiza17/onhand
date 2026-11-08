@@ -58,7 +58,7 @@ class ProductApiTests extends ApiTestSupport {
 	}
 
 	@Test
-	void getUpdateAndDelete() {
+	void getUpdateAndArchive() {
 		String id = createProduct("{\"name\":\"Oats\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"g\"}");
 
 		client.get().uri(PRODUCTS + "/" + id).exchange()
@@ -72,10 +72,15 @@ class ProductApiTests extends ApiTestSupport {
 				.jsonPath("$.trackingMode").isEqualTo("STATUS")
 				.jsonPath("$.defaultUnit").doesNotExist();
 
-		client.delete().uri(PRODUCTS + "/" + id).exchange().expectStatus().isNoContent();
+		client.post().uri(PRODUCTS + "/" + id + "/archive").exchange()
+				.expectStatus().isOk()
+				.expectBody().jsonPath("$.archived").isEqualTo(true);
+		// still readable by id (for undo), but gone from listing and search
 		client.get().uri(PRODUCTS + "/" + id).exchange()
-				.expectStatus().isNotFound()
-				.expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON);
+				.expectStatus().isOk()
+				.expectBody().jsonPath("$.archived").isEqualTo(true);
+		client.get().uri(PRODUCTS).exchange().expectBody().jsonPath("$.length()").isEqualTo(0);
+		client.get().uri(PRODUCTS + "?q=oats").exchange().expectBody().jsonPath("$.length()").isEqualTo(0);
 	}
 
 	@Test
@@ -329,7 +334,15 @@ class ProductApiTests extends ApiTestSupport {
 		String missing = PRODUCTS + "/01900000-0000-7000-8000-000000000000";
 		client.get().uri(missing).exchange().expectStatus().isNotFound();
 		put(missing, "{\"name\":\"X\",\"trackingMode\":\"STATUS\"}").expectStatus().isNotFound();
-		client.delete().uri(missing).exchange().expectStatus().isNotFound();
+		client.post().uri(missing + "/archive").exchange().expectStatus().isNotFound();
+		client.patch().uri(missing).contentType(MediaType.APPLICATION_JSON).body("{\"name\":\"X\"}").exchange()
+				.expectStatus().isNotFound();
+	}
+
+	@Test
+	void productsCannotBeHardDeleted() {
+		String id = createProduct("{\"name\":\"Oats\",\"trackingMode\":\"STATUS\"}");
+		client.delete().uri(PRODUCTS + "/" + id).exchange().expectStatus().isEqualTo(405);
 	}
 
 }

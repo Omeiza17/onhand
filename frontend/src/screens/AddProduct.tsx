@@ -15,6 +15,7 @@ import type {
 } from '../api/types.ts'
 import { MinusIcon, PlusIcon } from '../components/Icons.tsx'
 import { Link } from '../components/Link.tsx'
+import UnitPicker from '../components/UnitPicker.tsx'
 import { defaultStep, describe, formatQuantity, num, parseDecimal, unitLabel } from '../lib/format.ts'
 import { navigate } from '../lib/router.ts'
 import { useToast } from '../lib/toast.ts'
@@ -31,10 +32,6 @@ const STATUSES: { value: StockStatus; label: string }[] = [
   { value: 'OUT', label: 'Out' },
 ]
 
-/** Unit chips in two labelled rows (DESIGN.md); the rarer count units sit behind "More". */
-const MEASURED_UNITS: Unit[] = ['g', 'kg', 'ml', 'l']
-const COUNT_UNITS: Unit[] = ['piece', 'pack', 'tin', 'bottle', 'roll']
-const MORE_UNITS: Unit[] = ['jar', 'box', 'bag', 'carton', 'tube', 'tub', 'bar', 'sachet', 'bunch']
 
 const DECIMAL = /^\d*[.,]?\d*$/
 const round3 = (n: number) => Math.round(n * 1000) / 1000
@@ -60,7 +57,6 @@ export default function AddProduct({ initialName, stock }: { initialName: string
   const [qtyText, setQtyText] = useState('1')
   const [status, setStatus] = useState<StockStatus>('HAVE')
   const [minQuantity, setMinQuantity] = useState(0)
-  const [moreUnits, setMoreUnits] = useState(false)
 
   const [locations, setLocations] = useState<Location[] | null>(null)
   const [pickedLocationId, setPickedLocationId] = useState<string | null>(null)
@@ -120,12 +116,6 @@ export default function AddProduct({ initialName, stock }: { initialName: string
   const step = restock ? (restock.effectiveStepSize ?? defaultStep(countedUnit)) : defaultStep(unit)
   const quantity = parseDecimal(qtyText)
   const counting = restock !== null || mode === 'COUNTED'
-  // a selected "More" unit stays visible in the Count row even when the rest are collapsed
-  const countUnits = moreUnits
-    ? [...COUNT_UNITS, ...MORE_UNITS]
-    : MORE_UNITS.includes(unit)
-      ? [...COUNT_UNITS, unit]
-      : COUNT_UNITS
 
   const canSave =
     !saving &&
@@ -408,44 +398,7 @@ export default function AddProduct({ initialName, stock }: { initialName: string
                 <PlusIcon size={20} strokeWidth={2.2} />
               </button>
             </div>
-            {!restock && (
-              <div className="unit-rows">
-                <div className="unit-row">
-                  <div className="unit-row__label" id="unit-measured">
-                    Weight / volume
-                  </div>
-                  <div role="group" aria-labelledby="unit-measured" className="field__wrap">
-                    {MEASURED_UNITS.map((u) => (
-                      <button key={u} type="button" className="chip" aria-pressed={unit === u} onClick={() => pickUnit(u)}>
-                        {u}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="unit-row">
-                  <div className="unit-row__label" id="unit-count">
-                    Count
-                  </div>
-                  <div role="group" aria-labelledby="unit-count" className="field__wrap">
-                    {countUnits.map((u) => (
-                      <button key={u} type="button" className="chip" aria-pressed={unit === u} onClick={() => pickUnit(u)}>
-                        {u}
-                      </button>
-                    ))}
-                    {!moreUnits && (
-                      <button
-                        type="button"
-                        className="chip chip--quiet"
-                        aria-expanded={false}
-                        onClick={() => setMoreUnits(true)}
-                      >
-                        More
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
+            {!restock && <UnitPicker value={unit} onChange={pickUnit} idPrefix="add-unit" />}
           </div>
         ) : (
           <div className="field">

@@ -9,11 +9,14 @@ import dev.codingstoic.onhand.common.BadRequestException;
 import dev.codingstoic.onhand.common.ConflictException;
 import dev.codingstoic.onhand.common.InvalidRequestException;
 import dev.codingstoic.onhand.common.NotFoundException;
+import dev.codingstoic.onhand.location.Location;
 import dev.codingstoic.onhand.location.LocationRepository;
 import dev.codingstoic.onhand.product.Kind;
 import dev.codingstoic.onhand.product.Product;
 import dev.codingstoic.onhand.product.ProductRepository;
+import dev.codingstoic.onhand.product.ProductSnapshot;
 import dev.codingstoic.onhand.product.TrackingMode;
+import dev.codingstoic.onhand.product.Unit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +56,9 @@ public class StockService {
 	public StockChange add(AddStockRequest request) {
 		Product product = products.findById(request.productId())
 				.orElseThrow(() -> new InvalidRequestException("productId", "product does not exist"));
+		if (product.archived()) {
+			throw new InvalidRequestException("productId", "product has been removed from Onhand");
+		}
 		UUID locationId = request.locationId() != null ? request.locationId() : product.defaultLocationId();
 		if (locationId == null) {
 			throw new InvalidRequestException("locationId", "required when the product has no default location");
@@ -166,8 +172,76 @@ public class StockService {
 	@Transactional
 	public void remove(UUID id) {
 		StockItem item = lock(id);
-		events.deleteForItem(item.productId(), item.locationId());
 		items.delete(id);
+		events.deleteOrphaned(item.productId());
+	}
+
+	/**
+	 * Edit product, new location: moves the whole item and makes that location the product's
+	 * default. Refused if the product is already at the target (change it there instead).
+	 */
+	@Transactional
+	public StockChange move(UUID id, MoveRequest request) {
+		StockItem item = lock(id);
+		UUID target = request.locationId();
+		if (target.equals(item.locationId())) {
+			throw new InvalidRequestException("locationId", "it is already there");
+		}
+		Location place = locations.findById(target)
+				.orElseThrow(() -> new InvalidRequestException("locationId", "location does not exist"));
+		Product product = product(item);
+		if (items.lock(product.id(), target).isPresent()) {
+			throw new ConflictException(product.name() + " is already in " + place.name() + "; change it there.");
+		}
+		ProductSnapshot before = ProductSnapshot.of(product);
+		products.updateTracking(product.id(), new ProductSnapshot(before.trackingMode(), before.defaultUnit(),
+				before.minQuantity(), before.stepSize(), target));
+		StockItem moved = items.updateLocation(id, target);
+		return record(moved, StockEvent.moved(moved, item.locationId(), before));
+	}
+
+	/**
+	 * Edit product, new tracking mode or unit. What is at home is converted explicitly — never
+	 * guessed between units — and the product's unit, minimum and step size start fresh. Only
+	 * while the product is in one place.
+	 */
+	@Transactional
+	public StockChange convert(UUID id, ConvertRequest request) {
+		StockItem item = lock(id);
+		Product product = product(item);
+		int places = products.stockPlaces(product.id());
+		if (places > 1) {
+			throw new ConflictException(
+					product.name() + " is in " + places + " places; change how it's tracked while it's in one.");
+		}
+		ProductSnapshot before = ProductSnapshot.of(product);
+		UUID home = before.defaultLocationId();
+
+		if (request.trackingMode() == TrackingMode.STATUS) {
+			if (product.trackingMode() == TrackingMode.STATUS) {
+				throw new InvalidRequestException("trackingMode", "it is already tracked by status");
+			}
+			// some left → HAVE, none → OUT
+			StockStatus status = item.quantity().signum() > 0 ? StockStatus.HAVE : StockStatus.OUT;
+			products.updateTracking(product.id(), new ProductSnapshot(TrackingMode.STATUS, null, null, null, home));
+			StockItem converted = items.updateState(id, null, status);
+			return record(converted, StockEvent.converted(EventType.STATUS_CHANGED, converted,
+					item.quantity().negate(), null, status, before));
+		}
+
+		boolean fromStatus = product.trackingMode() == TrackingMode.STATUS;
+		Unit unit = request.unit() != null ? request.unit() : (fromStatus ? Unit.PIECE : null);
+		if (!fromStatus && (unit == null || unit == product.defaultUnit())) {
+			throw new InvalidRequestException("unit", "choose a different unit");
+		}
+		if (request.quantity() == null) {
+			throw new InvalidRequestException("quantity", "how much do you have now?");
+		}
+		products.updateTracking(product.id(), new ProductSnapshot(TrackingMode.COUNTED, unit, null, null, home));
+		StockItem converted = items.updateState(id, request.quantity(), null);
+		BigDecimal delta = fromStatus ? request.quantity() : request.quantity().subtract(item.quantity());
+		return record(converted,
+				StockEvent.converted(EventType.ADJUSTED, converted, delta, item.status(), null, before));
 	}
 
 	/**
@@ -182,10 +256,39 @@ public class StockService {
 			throw new ConflictException("This change has already been undone.");
 		}
 		Optional<StockItem> locked = items.lock(event.productId(), event.locationId());
-		if (!events.latestActiveId(event.productId(), event.locationId()).map(eventId::equals).orElse(false)) {
+		if (!isLatest(event, event.locationId())
+				|| (event.fromLocationId() != null && !isLatest(event, event.fromLocationId()))) {
 			throw new ConflictException("This item has changed since; only its latest change can be undone.");
 		}
 		StockItem item = locked.orElseThrow(() -> new ConflictException("This stock item no longer exists."));
+
+		if (event.type() == EventType.MOVED) {
+			// move it back, and the product's default location with it
+			if (items.lock(item.productId(), event.fromLocationId()).isPresent()) {
+				throw new ConflictException("It is back in its old place already; can't move it there again.");
+			}
+			events.markUndone(eventId);
+			// only the default location goes back; later edits (minimum, step) stay
+			ProductSnapshot now = ProductSnapshot.of(product(item));
+			products.updateTracking(item.productId(), new ProductSnapshot(now.trackingMode(), now.defaultUnit(),
+					now.minQuantity(), now.stepSize(), event.productBefore().defaultLocationId()));
+			items.updateLocation(item.id(), event.fromLocationId());
+			return new StockChange(view(item.id()), eventId);
+		}
+		if (event.productBefore() != null) {
+			// a mode or unit change: restore the product, then the item in its old terms
+			events.markUndone(eventId);
+			ProductSnapshot before = event.productBefore();
+			products.updateTracking(item.productId(), before);
+			if (before.trackingMode() == TrackingMode.COUNTED) {
+				BigDecimal now = item.quantity() != null ? item.quantity() : BigDecimal.ZERO;
+				items.updateState(item.id(), now.subtract(event.quantityDelta()), null);
+			}
+			else {
+				items.updateState(item.id(), null, event.statusFrom());
+			}
+			return new StockChange(view(item.id()), eventId);
+		}
 
 		events.markUndone(eventId);
 		if (!events.hasActiveEvents(item.productId(), item.locationId())) {
@@ -203,9 +306,18 @@ public class StockService {
 				}
 			}
 			case STATUS_CHANGED -> items.updateStatus(item.id(), event.statusFrom());
-			case MOVED -> throw new ConflictException("Undoing a move is not supported.");
+			case MOVED -> throw new IllegalStateException("handled above");
 		}
 		return new StockChange(view(item.id()), eventId);
+	}
+
+	private boolean isLatest(StockEvent event, UUID locationId) {
+		return events.latestActiveId(event.productId(), locationId).map(event.id()::equals).orElse(false);
+	}
+
+	private Product product(StockItem item) {
+		return products.findById(item.productId())
+				.orElseThrow(() -> new NotFoundException("Product", item.productId()));
 	}
 
 	private StockChange record(StockItem item, StockEvent event) {

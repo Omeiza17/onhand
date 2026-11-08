@@ -529,12 +529,22 @@ class StockApiTests extends ApiTestSupport {
 	}
 
 	@Test
-	void deletingAProductRemovesItsStockAndHistory() {
+	void archivingAProductHidesItsStockButKeepsIt() {
 		addRice("1");
+		addCumin();
 
-		client.delete().uri("/api/v1/products/" + rice).exchange().expectStatus().isNoContent();
-		assertThat(count("stock_item")).isZero();
-		assertThat(count("stock_event")).isZero();
+		client.post().uri("/api/v1/products/" + rice + "/archive").exchange().expectStatus().isOk();
+		client.get().uri(STOCK).exchange()
+				.expectBody().jsonPath("$[*].productName").isEqualTo(List.of("Cumin"));
+		assertThat(count("stock_item")).isEqualTo(2);
+		assertThat(count("stock_event")).isEqualTo(2);
+		// an archived product can't be added
+		post(STOCK, "{\"productId\":\"%s\"}".formatted(rice))
+				.expectStatus().isBadRequest()
+				.expectBody().jsonPath("$.errors[0].field").isEqualTo("productId");
+
+		client.post().uri("/api/v1/products/" + rice + "/unarchive").exchange().expectStatus().isOk();
+		client.get().uri(STOCK).exchange().expectBody().jsonPath("$.length()").isEqualTo(2);
 	}
 
 	@Test

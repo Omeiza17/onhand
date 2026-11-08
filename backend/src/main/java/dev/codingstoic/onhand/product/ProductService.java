@@ -1,5 +1,6 @@
 package dev.codingstoic.onhand.product;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -73,11 +74,64 @@ public class ProductService {
 				.orElseThrow(() -> new NotFoundException("Product", id));
 	}
 
-	/** Deletes the product together with its stock and stock history. */
+	/**
+	 * Edit product's plain fields (name, kind, category, minimum, step size); omitted fields stay.
+	 * Not recorded as stock events, so not undoable.
+	 */
 	@Transactional
-	public void delete(UUID id) {
-		if (!products.delete(id)) {
-			throw new NotFoundException("Product", id);
+	public Product patch(UUID id, ProductPatch patch) {
+		Product current = get(id);
+		String name = current.name();
+		if (patch.name() != null) {
+			name = patch.name().strip();
+			if (name.isEmpty()) {
+				throw new InvalidRequestException("name", "must not be blank");
+			}
+		}
+		boolean counted = current.trackingMode() == TrackingMode.COUNTED;
+		BigDecimal minQuantity = current.minQuantity();
+		if (patch.minQuantity() != null) {
+			if (!counted && patch.minQuantity().signum() > 0) {
+				throw new InvalidRequestException("minQuantity", "only allowed for COUNTED products");
+			}
+			minQuantity = patch.minQuantity().signum() == 0 ? null : patch.minQuantity();
+		}
+		BigDecimal stepSize = current.stepSize();
+		if (patch.stepSize() != null) {
+			if (!counted) {
+				throw new InvalidRequestException("stepSize", "only allowed for COUNTED products");
+			}
+			stepSize = patch.stepSize();
+		}
+		String category = patch.category() == null ? current.category() : blankToNull(patch.category());
+		Kind kind = patch.kind() != null ? patch.kind() : current.kind();
+		try {
+			return products.updateDetails(id, name, kind, category, minQuantity, stepSize)
+					.orElseThrow(() -> new NotFoundException("Product", id));
+		}
+		catch (DuplicateKeyException ex) {
+			throw new ConflictException("A product named '" + name + "' already exists.");
+		}
+	}
+
+	/**
+	 * "Remove from Onhand": hides the product (and its stock) from Home, search and autocomplete.
+	 * Nothing is deleted — stock events reference the product — so it can be restored.
+	 */
+	@Transactional
+	public Product archive(UUID id) {
+		return products.setArchived(id, true).orElseThrow(() -> new NotFoundException("Product", id));
+	}
+
+	/** Undo of "Remove from Onhand". Refused if another product has taken the name meanwhile. */
+	@Transactional
+	public Product unarchive(UUID id) {
+		Product product = get(id);
+		try {
+			return products.setArchived(id, false).orElseThrow(() -> new NotFoundException("Product", id));
+		}
+		catch (DuplicateKeyException ex) {
+			throw new ConflictException("Another product named '" + product.name() + "' exists now.");
 		}
 	}
 

@@ -1,5 +1,5 @@
 import { json, request } from './client.ts'
-import type { Kind, StockChange, StockItem, StockStatus } from './types.ts'
+import type { Kind, StockChange, StockItem, StockStatus, TrackingMode, Unit } from './types.ts'
 
 /** Everything at home, ordered by location then name. `kind` narrows it to FOOD or HOUSEHOLD. */
 export function listStock(kind?: Kind): Promise<StockItem[]> {
@@ -40,6 +40,22 @@ export function setStockQuantity(
 /** STATUS pill: HAVE → LOW → OUT → HAVE. */
 export function cycleStockStatus(id: string): Promise<StockChange> {
   return request(`/stock/${id}/cycle`, json('POST'))
+}
+
+/** Edit product, new place: moves the whole item there (and makes it the default place). */
+export function moveStock(id: string, locationId: string): Promise<StockChange> {
+  return request(`/stock/${id}/move`, json('POST', { locationId }))
+}
+
+/**
+ * Edit product, new tracking mode or unit. To STATUS: nothing else (Have if some is left,
+ * else Out). To COUNTED or a new unit: the unit and how much is at home now.
+ */
+export function convertStock(
+  id: string,
+  body: { trackingMode: TrackingMode; unit?: Unit; quantity?: number },
+): Promise<StockChange> {
+  return request(`/stock/${id}/convert`, json('POST', body))
 }
 
 /** Undo a change (only an item's latest change can be undone). */

@@ -6,7 +6,7 @@ import java.util.UUID;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -54,10 +54,22 @@ class ProductController {
 		return service.setStepSize(id, request);
 	}
 
-	@DeleteMapping("/{id}")
-	ResponseEntity<Void> delete(@PathVariable UUID id) {
-		service.delete(id);
-		return ResponseEntity.noContent().build();
+	/** Edit product: name, kind, category, minimum, step size — omitted fields stay as they are. */
+	@PatchMapping("/{id}")
+	Product patch(@PathVariable UUID id, @Valid @RequestBody ProductPatch patch) {
+		return service.patch(id, patch);
+	}
+
+	/** "Remove from Onhand". Products are never hard-deleted. */
+	@PostMapping("/{id}/archive")
+	Product archive(@PathVariable UUID id) {
+		return service.archive(id);
+	}
+
+	/** Undo of archive. */
+	@PostMapping("/{id}/unarchive")
+	Product unarchive(@PathVariable UUID id) {
+		return service.unarchive(id);
 	}
 
 }

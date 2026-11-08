@@ -38,11 +38,11 @@ class StockItemRepository {
 
 	/**
 	 * Everything at home, or only one kind of product when {@code kind} is given, ordered for
-	 * display: by location order, then product name.
+	 * display: by location order, then product name. Archived products are left out.
 	 */
 	List<StockItemView> findAllViews(Kind kind) {
 		return jdbc.sql(VIEW + """
-				where (cast(:kind as text) is null or p.kind = :kind)
+				where p.archived_at is null and (cast(:kind as text) is null or p.kind = :kind)
 				order by l.sort_order, lower(l.name), lower(p.name)
 				""")
 				.param("kind", kind == null ? null : kind.name())
@@ -98,6 +98,21 @@ class StockItemRepository {
 	StockItem updateStatus(UUID id, StockStatus status) {
 		return jdbc.sql("update stock_item set status = :s, updated_at = now() where id = :id" + RETURNING)
 				.param("id", id).param("s", status.name())
+				.query(StockItemRepository::map)
+				.single();
+	}
+
+	StockItem updateLocation(UUID id, UUID locationId) {
+		return jdbc.sql("update stock_item set location_id = :l, updated_at = now() where id = :id" + RETURNING)
+				.param("id", id).param("l", locationId)
+				.query(StockItemRepository::map)
+				.single();
+	}
+
+	/** Sets quantity and status together — switching an item between COUNTED and STATUS. */
+	StockItem updateState(UUID id, BigDecimal quantity, StockStatus status) {
+		return jdbc.sql("update stock_item set quantity = :q, status = :s, updated_at = now() where id = :id" + RETURNING)
+				.param("id", id).param("q", quantity).param("s", status == null ? null : status.name())
 				.query(StockItemRepository::map)
 				.single();
 	}

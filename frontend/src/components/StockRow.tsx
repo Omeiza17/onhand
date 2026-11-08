@@ -1,6 +1,7 @@
 import type { StockItem, StockStatus } from '../api/types.ts'
 import { describe, formatQuantity, isBelowMinimum, NEXT_STATUS, STATUS_LABEL } from '../lib/format.ts'
 import { MinusIcon, PlusIcon } from './Icons.tsx'
+import { Link } from './Link.tsx'
 
 interface Props {
   item: StockItem
@@ -15,13 +16,20 @@ export default function StockRow({ item, onDecrease, onIncrease, onOpenSheet, on
   const name = item.productName
   return (
     <li className="row">
-      <div className="row__text">
-        <div className="row__name">{name}</div>
-        <div className="row__meta">
+      {/* the whole name area opens Edit product for this row */}
+      <Link
+        href={`/product/${item.productId}?item=${item.id}`}
+        className="row__text row__link"
+      >
+        <span className="row__name">
+          {name}
+          <span className="sr-only">, edit</span>
+        </span>
+        <span className="row__meta">
           {item.category && <span>{item.category}</span>}
           {isBelowMinimum(item) && <span className="row__on-list">· On list</span>}
-        </div>
-      </div>
+        </span>
+      </Link>
 
       {item.trackingMode === 'COUNTED' ? (
         <div className="row__counter">

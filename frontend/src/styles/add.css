@@ -339,6 +339,84 @@
   font-weight: 500;
 }
 
+/* --- Edit product --- */
+
+.edit__context {
+  margin: -8px 0 0;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.field__hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.field__label--warn {
+  color: var(--low-ink);
+}
+
+/* "Moves 1 from Pantry to Bathroom", "Will be set to Have (you have 1)" */
+.note {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: var(--radius-input);
+  background: var(--have-bg);
+  color: var(--have-ink);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.qty__box--start {
+  justify-content: flex-start;
+}
+
+.qty__box--start input {
+  flex: 1;
+  width: auto;
+  text-align: left;
+}
+
+.toggle-card:disabled {
+  opacity: 0.5;
+}
+
+.edit__remove {
+  margin-top: 6px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit__remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.edit__remove-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* "No changes": muted, outlined, not clickable */
+.add__save--idle {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  cursor: default;
+}
+
 /* --- sticky "Add to {Location}" --- */
 
 .add__footer {

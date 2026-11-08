@@ -83,4 +83,15 @@ export interface Product {
   stepSize: number | null
   effectiveStepSize: number | null
   barcode: string | null
+  /** removed from Onhand (hidden everywhere; can be restored) */
+  archived: boolean
+}
+
+/** product.ProductPatch — omitted fields stay; "" clears category, minQuantity 0 switches it off. */
+export interface ProductPatch {
+  name?: string
+  kind?: Kind
+  category?: string
+  minQuantity?: number
+  stepSize?: number
 }

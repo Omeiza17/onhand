@@ -3,6 +3,7 @@ package dev.codingstoic.onhand.product;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +17,7 @@ import org.springframework.stereotype.Repository;
 public class ProductRepository {
 
 	private static final String COLUMNS =
-			"id, name, kind, category, tracking_mode, default_unit, default_location_id, min_quantity, step_size, barcode";
+			"id, name, kind, category, tracking_mode, default_unit, default_location_id, min_quantity, step_size, barcode, archived_at";
 
 	private final JdbcClient jdbc;
 
@@ -24,14 +25,17 @@ public class ProductRepository {
 		this.jdbc = jdbc;
 	}
 
-	/** All products by name, or only those whose name contains {@code query} (case-insensitive). */
+	/**
+	 * Products that are not archived, by name — all of them, or only those whose name contains
+	 * {@code query} (case-insensitive).
+	 */
 	public List<Product> search(String query) {
 		if (query == null || query.isBlank()) {
-			return jdbc.sql("select " + COLUMNS + " from product order by lower(name)")
+			return jdbc.sql("select " + COLUMNS + " from product where archived_at is null order by lower(name)")
 					.query(ProductRepository::map)
 					.list();
 		}
-		return jdbc.sql("select " + COLUMNS + " from product where name ilike :pattern escape '\\' order by lower(name)")
+		return jdbc.sql("select " + COLUMNS + " from product where archived_at is null and name ilike :pattern escape '\\' order by lower(name)")
 				.param("pattern", "%" + escapeLike(query.strip()) + "%")
 				.query(ProductRepository::map)
 				.list();
@@ -94,8 +98,62 @@ public class ProductRepository {
 				.single();
 	}
 
-	public boolean delete(UUID id) {
-		return jdbc.sql("delete from product where id = :id").param("id", id).update() > 0;
+	/** Edit product's plain fields. Empty if the product does not exist. */
+	public Optional<Product> updateDetails(UUID id, String name, Kind kind, String category, BigDecimal minQuantity,
+			BigDecimal stepSize) {
+		return jdbc.sql("""
+				update product
+				set name = :name, kind = :kind, category = :category, min_quantity = :minQuantity,
+				    step_size = :stepSize, updated_at = now()
+				where id = :id
+				returning\s""" + COLUMNS)
+				.param("id", id)
+				.param("name", name)
+				.param("kind", kind.name())
+				.param("category", category)
+				.param("minQuantity", minQuantity)
+				.param("stepSize", stepSize)
+				.query(ProductRepository::map)
+				.optional();
+	}
+
+	/** Sets the tracking fields together (they are checked together by the database). */
+	public Product updateTracking(UUID id, ProductSnapshot t) {
+		return jdbc.sql("""
+				update product
+				set tracking_mode = :mode, default_unit = :unit, min_quantity = :minQuantity,
+				    step_size = :stepSize, default_location_id = :defaultLocationId, updated_at = now()
+				where id = :id
+				returning\s""" + COLUMNS)
+				.param("id", id)
+				.param("mode", t.trackingMode().name())
+				.param("unit", t.defaultUnit() == null ? null : t.defaultUnit().code())
+				.param("minQuantity", t.minQuantity())
+				.param("stepSize", t.stepSize())
+				.param("defaultLocationId", t.defaultLocationId())
+				.query(ProductRepository::map)
+				.single();
+	}
+
+	/** Archives (true) or restores (false). Empty if the product does not exist. */
+	public Optional<Product> setArchived(UUID id, boolean archived) {
+		return jdbc.sql("""
+				update product
+				set archived_at = case when :archived then coalesce(archived_at, now()) end, updated_at = now()
+				where id = :id
+				returning\s""" + COLUMNS)
+				.param("id", id)
+				.param("archived", archived)
+				.query(ProductRepository::map)
+				.optional();
+	}
+
+	/** Places where the product is at home right now. */
+	public int stockPlaces(UUID id) {
+		return jdbc.sql("select count(*) from stock_item where product_id = :id")
+				.param("id", id)
+				.query(Integer.class)
+				.single();
 	}
 
 	private static Map<String, Object> params(ProductRequest p) {
@@ -130,7 +188,8 @@ public class ProductRepository {
 				rs.getBigDecimal("min_quantity"),
 				stepSize,
 				Product.effectiveStep(unit, stepSize),
-				rs.getString("barcode"));
+				rs.getString("barcode"),
+				rs.getObject("archived_at", OffsetDateTime.class) != null);
 	}
 
 }
