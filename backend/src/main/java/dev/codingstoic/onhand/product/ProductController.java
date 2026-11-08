@@ -48,6 +48,12 @@ class ProductController {
 		return service.update(id, request);
 	}
 
+	/** Set from the Home update panel; {@code {"stepSize": null}} resets to the unit default. */
+	@PutMapping("/{id}/step-size")
+	Product setStepSize(@PathVariable UUID id, @Valid @RequestBody StepSizeRequest request) {
+		return service.setStepSize(id, request);
+	}
+
 	@DeleteMapping("/{id}")
 	ResponseEntity<Void> delete(@PathVariable UUID id) {
 		service.delete(id);

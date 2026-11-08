@@ -1,5 +1,6 @@
 package dev.codingstoic.onhand.product;
 
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Repository;
 public class ProductRepository {
 
 	private static final String COLUMNS =
-			"id, name, kind, category, tracking_mode, default_unit, default_location_id, min_quantity, barcode";
+			"id, name, kind, category, tracking_mode, default_unit, default_location_id, min_quantity, step_size, barcode";
 
 	private final JdbcClient jdbc;
 
@@ -53,17 +54,35 @@ public class ProductRepository {
 				.single();
 	}
 
-	/** Replaces all editable fields. Empty if the product does not exist. */
+	/**
+	 * Replaces all editable fields. Step size is not one of them; it is kept, except that a change
+	 * of unit or tracking mode resets it to the unit default (the old step would not fit).
+	 * Empty if the product does not exist.
+	 */
 	public Optional<Product> update(UUID id, ProductRequest p) {
 		return jdbc.sql("""
 				update product
 				set name = :name, kind = :kind, category = :category, tracking_mode = :trackingMode,
 				    default_unit = :defaultUnit, default_location_id = :defaultLocationId,
-				    min_quantity = :minQuantity, barcode = :barcode, updated_at = now()
+				    min_quantity = :minQuantity, barcode = :barcode,
+				    step_size = case
+				        when tracking_mode = :trackingMode and default_unit is not distinct from :defaultUnit
+				        then step_size
+				    end,
+				    updated_at = now()
 				where id = :id
 				returning\s""" + COLUMNS)
 				.params(params(p))
 				.param("id", id)
+				.query(ProductRepository::map)
+				.optional();
+	}
+
+	/** Sets the step size (null = unit default). Empty if the product does not exist. */
+	public Optional<Product> updateStepSize(UUID id, BigDecimal stepSize) {
+		return jdbc.sql("update product set step_size = :stepSize, updated_at = now() where id = :id returning\s" + COLUMNS)
+				.param("id", id)
+				.param("stepSize", stepSize)
 				.query(ProductRepository::map)
 				.optional();
 	}
@@ -97,16 +116,20 @@ public class ProductRepository {
 	}
 
 	private static Product map(ResultSet rs, int rowNum) throws SQLException {
-		String unit = rs.getString("default_unit");
+		String unitCode = rs.getString("default_unit");
+		Unit unit = unitCode == null ? null : Unit.fromCode(unitCode);
+		BigDecimal stepSize = rs.getBigDecimal("step_size");
 		return new Product(
 				rs.getObject("id", UUID.class),
 				rs.getString("name"),
 				Kind.valueOf(rs.getString("kind")),
 				rs.getString("category"),
 				TrackingMode.valueOf(rs.getString("tracking_mode")),
-				unit == null ? null : Unit.fromCode(unit),
+				unit,
 				rs.getObject("default_location_id", UUID.class),
 				rs.getBigDecimal("min_quantity"),
+				stepSize,
+				Product.effectiveStep(unit, stepSize),
 				rs.getString("barcode"));
 	}
 

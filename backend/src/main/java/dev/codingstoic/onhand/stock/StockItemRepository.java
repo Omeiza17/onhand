@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import dev.codingstoic.onhand.product.Kind;
+import dev.codingstoic.onhand.product.Product;
 import dev.codingstoic.onhand.product.TrackingMode;
 import dev.codingstoic.onhand.product.Unit;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -19,7 +20,7 @@ import org.springframework.stereotype.Repository;
 class StockItemRepository {
 
 	private static final String VIEW = """
-			select s.id, s.product_id, p.name as product_name, p.kind, p.category, p.tracking_mode, p.default_unit,
+			select s.id, s.product_id, p.name as product_name, p.kind, p.category, p.tracking_mode, p.default_unit, p.step_size,
 			       s.location_id, l.name as location_name, l.sort_order as location_sort_order,
 			       s.quantity, s.status, s.expires_on, s.updated_at
 			from stock_item s
@@ -116,8 +117,10 @@ class StockItemRepository {
 	}
 
 	private static StockItemView mapView(ResultSet rs, int rowNum) throws SQLException {
-		String unit = rs.getString("default_unit");
+		String unitCode = rs.getString("default_unit");
+		Unit unit = unitCode == null ? null : Unit.fromCode(unitCode);
 		String status = rs.getString("status");
+		BigDecimal quantity = rs.getBigDecimal("quantity");
 		return new StockItemView(
 				rs.getObject("id", UUID.class),
 				rs.getObject("product_id", UUID.class),
@@ -125,11 +128,12 @@ class StockItemRepository {
 				Kind.valueOf(rs.getString("kind")),
 				rs.getString("category"),
 				TrackingMode.valueOf(rs.getString("tracking_mode")),
-				unit == null ? null : Unit.fromCode(unit),
+				unit,
 				rs.getObject("location_id", UUID.class),
 				rs.getString("location_name"),
 				rs.getInt("location_sort_order"),
-				rs.getBigDecimal("quantity"),
+				quantity,
+				quantity == null ? null : Product.effectiveStep(unit, rs.getBigDecimal("step_size")),
 				status == null ? null : StockStatus.valueOf(status),
 				rs.getObject("expires_on", LocalDate.class),
 				rs.getObject("updated_at", OffsetDateTime.class).toInstant());

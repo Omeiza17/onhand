@@ -76,31 +76,53 @@ public class StockService {
 		return record(item, StockEvent.statusChange(EventType.ADDED, item, from, StockStatus.HAVE, request.note()));
 	}
 
-	/** "+" on a COUNTED item. */
+	/** "+" on a COUNTED item; one tap moves by the product's step size. */
 	@Transactional
 	public StockChange increase(UUID id, AmountRequest request) {
 		StockItem item = lockCounted(id);
-		BigDecimal amount = amount(request);
+		BigDecimal amount = amount(request, item);
 		StockItem updated = items.updateQuantity(id, item.quantity().add(amount));
 		return record(updated, StockEvent.quantityChange(EventType.ADDED, updated, amount, note(request)));
 	}
 
-	/** "−" on a COUNTED item. Uses what is left if the amount is larger; nothing left is a 409. */
+	/**
+	 * "−" on a COUNTED item; one tap moves by the product's step size. Uses what is left if the
+	 * amount is larger; nothing left is a 409.
+	 */
 	@Transactional
 	public StockChange decrease(UUID id, AmountRequest request) {
 		StockItem item = lockCounted(id);
 		if (item.quantity().signum() == 0) {
 			throw new ConflictException("Nothing left to use.");
 		}
-		BigDecimal used = amount(request).min(item.quantity());
+		BigDecimal used = amount(request, item).min(item.quantity());
 		StockItem updated = items.updateQuantity(id, item.quantity().subtract(used));
 		return record(updated, StockEvent.quantityChange(EventType.USED, updated, used.negate(), note(request)));
 	}
 
-	/** Sets the exact amount of a COUNTED item. No change, no event. */
+	/**
+	 * Exact update from the Home panel: "Now I have" ({@code quantity}, ADJUSTED; no change, no
+	 * event) or "I used" ({@code used}, USED; more than is there is refused, not clamped, since
+	 * it was typed).
+	 */
 	@Transactional
 	public StockChange setQuantity(UUID id, QuantityRequest request) {
+		if (request.quantity() != null && request.used() != null) {
+			throw new InvalidRequestException("used", "give either quantity or used, not both");
+		}
+		if (request.quantity() == null && request.used() == null) {
+			throw new InvalidRequestException("quantity", "quantity or used is required");
+		}
 		StockItem item = lockCounted(id);
+		if (request.used() != null) {
+			if (request.used().compareTo(item.quantity()) > 0) {
+				throw new InvalidRequestException("used",
+						"more than the " + item.quantity().stripTrailingZeros().toPlainString() + " there is");
+			}
+			StockItem updated = items.updateQuantity(id, item.quantity().subtract(request.used()));
+			return record(updated,
+					StockEvent.quantityChange(EventType.USED, updated, request.used().negate(), request.note()));
+		}
 		BigDecimal delta = request.quantity().subtract(item.quantity());
 		if (delta.signum() == 0) {
 			return new StockChange(view(id), null);
@@ -192,8 +214,14 @@ public class StockService {
 		return items.findView(id).orElseThrow(() -> new NotFoundException("Stock item", id));
 	}
 
-	private static BigDecimal amount(AmountRequest request) {
-		return (request == null || request.amount() == null) ? BigDecimal.ONE : request.amount();
+	/** The amount asked for, or the product's step size for a plain tap. */
+	private BigDecimal amount(AmountRequest request, StockItem item) {
+		if (request != null && request.amount() != null) {
+			return request.amount();
+		}
+		return products.findById(item.productId())
+				.map(Product::effectiveStepSize)
+				.orElse(BigDecimal.ONE);
 	}
 
 	private static String note(AmountRequest request) {

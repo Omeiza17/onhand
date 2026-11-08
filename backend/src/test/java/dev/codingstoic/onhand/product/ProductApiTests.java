@@ -1,12 +1,15 @@
 package dev.codingstoic.onhand.product;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import dev.codingstoic.onhand.ApiTestSupport;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ProductApiTests extends ApiTestSupport {
 
@@ -212,6 +215,94 @@ class ProductApiTests extends ApiTestSupport {
 				.expectBody().jsonPath("$[0].kind").isEqualTo("FOOD");
 		assertThat(jdbc.sql("select kind from product where name = 'Old rice'").query(String.class).single())
 				.isEqualTo("FOOD");
+	}
+
+	// --- step size ---
+
+	@Test
+	void effectiveStepSizeFollowsTheUnitDefault() {
+		String[][] cases = { { "piece", "1" }, { "pack", "1" }, { "tin", "1" }, { "g", "100" }, { "kg", "0.5" },
+				{ "ml", "250" }, { "l", "0.5" } };
+		for (String[] c : cases) {
+			post(PRODUCTS, "{\"name\":\"Thing in %s\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"%s\"}"
+					.formatted(c[0], c[0]))
+					.expectStatus().isCreated()
+					.expectBody()
+					.jsonPath("$.stepSize").doesNotExist()
+					.jsonPath("$.effectiveStepSize").value(Number.class,
+							n -> assertThat(new BigDecimal(n.toString())).isEqualByComparingTo(c[1]));
+		}
+		post(PRODUCTS, "{\"name\":\"Salt\",\"trackingMode\":\"STATUS\"}")
+				.expectStatus().isCreated()
+				.expectBody().jsonPath("$.effectiveStepSize").doesNotExist();
+	}
+
+	@Test
+	void stepSizeCanBeSetAndResetToTheUnitDefault() {
+		String id = createProduct("{\"name\":\"Chicken\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"g\"}");
+
+		put(PRODUCTS + "/" + id + "/step-size", "{\"stepSize\":50}")
+				.expectStatus().isOk()
+				.expectBody()
+				.jsonPath("$.stepSize").isEqualTo(50.0)
+				.jsonPath("$.effectiveStepSize").isEqualTo(50.0);
+		client.get().uri(PRODUCTS + "/" + id).exchange()
+				.expectBody().jsonPath("$.stepSize").isEqualTo(50.0);
+
+		put(PRODUCTS + "/" + id + "/step-size", "{\"stepSize\":null}")
+				.expectStatus().isOk()
+				.expectBody()
+				.jsonPath("$.stepSize").doesNotExist()
+				.jsonPath("$.effectiveStepSize").isEqualTo(100);
+	}
+
+	@Test
+	void stepSizeValidation() {
+		String counted = createProduct("{\"name\":\"Chicken\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"g\"}");
+		String status = createProduct("{\"name\":\"Salt\",\"trackingMode\":\"STATUS\"}");
+
+		for (String bad : new String[] { "0", "-5", "0.0001" }) {
+			put(PRODUCTS + "/" + counted + "/step-size", "{\"stepSize\":" + bad + "}")
+					.expectStatus().isBadRequest()
+					.expectBody().jsonPath("$.errors[0].field").isEqualTo("stepSize");
+		}
+		put(PRODUCTS + "/" + status + "/step-size", "{\"stepSize\":1}")
+				.expectStatus().isBadRequest()
+				.expectBody().jsonPath("$.errors[0].field").isEqualTo("stepSize");
+		put(PRODUCTS + "/01900000-0000-7000-8000-000000000000/step-size", "{\"stepSize\":1}")
+				.expectStatus().isNotFound();
+	}
+
+	@Test
+	void productUpdateKeepsStepSizeUnlessUnitOrModeChanges() {
+		String id = createProduct("{\"name\":\"Chicken\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"g\"}");
+		put(PRODUCTS + "/" + id + "/step-size", "{\"stepSize\":50}").expectStatus().isOk();
+
+		// other edits keep it (and stepSize in the body is not a way to change it)
+		put(PRODUCTS + "/" + id, "{\"name\":\"Chicken thighs\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"g\",\"stepSize\":7}")
+				.expectStatus().isOk()
+				.expectBody().jsonPath("$.stepSize").isEqualTo(50.0);
+
+		// a new unit resets it to the unit default
+		put(PRODUCTS + "/" + id, "{\"name\":\"Chicken thighs\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"kg\"}")
+				.expectStatus().isOk()
+				.expectBody()
+				.jsonPath("$.stepSize").doesNotExist()
+				.jsonPath("$.effectiveStepSize").isEqualTo(0.5);
+
+		// switching to STATUS clears it too (the database would refuse a step otherwise)
+		put(PRODUCTS + "/" + id + "/step-size", "{\"stepSize\":0.25}").expectStatus().isOk();
+		put(PRODUCTS + "/" + id, "{\"name\":\"Chicken thighs\",\"trackingMode\":\"STATUS\"}")
+				.expectStatus().isOk()
+				.expectBody().jsonPath("$.stepSize").doesNotExist();
+	}
+
+	@Test
+	void databaseRefusesStepSizeOnStatusProducts() {
+		jdbc.sql("insert into product (name, tracking_mode) values ('Oil', 'STATUS')").update();
+		assertThatThrownBy(() ->
+				jdbc.sql("update product set step_size = 1 where name = 'Oil'").update())
+				.isInstanceOf(DataIntegrityViolationException.class);
 	}
 
 	@Test

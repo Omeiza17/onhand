@@ -163,13 +163,14 @@ class StockApiTests extends ApiTestSupport {
 	void increaseAndDecreaseByOneTapAndByAmount() {
 		String item = addRice("3");
 
+		// one tap moves by the step size: rice is in kg, default step 0.5
 		String json = ok(client.post().uri(STOCK + "/" + item + "/increase").exchange());
-		assertThat(quantity(json)).isEqualByComparingTo("4");
-		assertEvent(read(json, "$.eventId"), "ADDED", "1", null, null);
+		assertThat(quantity(json)).isEqualByComparingTo("3.5");
+		assertEvent(read(json, "$.eventId"), "ADDED", "0.5", null, null);
 
 		json = ok(client.post().uri(STOCK + "/" + item + "/decrease").exchange());
 		assertThat(quantity(json)).isEqualByComparingTo("3");
-		assertEvent(read(json, "$.eventId"), "USED", "-1", null, null);
+		assertEvent(read(json, "$.eventId"), "USED", "-0.5", null, null);
 
 		json = ok(post(STOCK + "/" + item + "/decrease", "{\"amount\":0.5,\"note\":\"dinner\"}"));
 		assertThat(quantity(json)).isEqualByComparingTo("2.5");
@@ -207,6 +208,91 @@ class StockApiTests extends ApiTestSupport {
 
 		put(STOCK + "/" + item + "/quantity", "{\"quantity\":-1}").expectStatus().isBadRequest();
 		put(STOCK + "/" + item + "/quantity", "{}").expectStatus().isBadRequest();
+	}
+
+	@Test
+	void oneTapUsesTheUnitDefaultOrTheProductsOwnStep() {
+		String chicken = createProduct("{\"name\":\"Chicken\",\"trackingMode\":\"COUNTED\",\"defaultUnit\":\"g\"}");
+		String item = read(ok(post(STOCK, "{\"productId\":\"%s\",\"locationId\":\"%s\",\"quantity\":485}"
+				.formatted(chicken, fridge))), "$.item.id");
+
+		// g defaults to 100
+		String json = ok(client.post().uri(STOCK + "/" + item + "/decrease").exchange());
+		assertThat(quantity(json)).isEqualByComparingTo("385");
+		assertThat(new BigDecimal(read(json, "$.item.stepSize"))).isEqualByComparingTo("100");
+
+		// the product's own step wins, and the listing shows it
+		put("/api/v1/products/" + chicken + "/step-size", "{\"stepSize\":50}").expectStatus().isOk();
+		json = ok(client.post().uri(STOCK + "/" + item + "/decrease").exchange());
+		assertThat(quantity(json)).isEqualByComparingTo("335");
+		assertEvent(read(json, "$.eventId"), "USED", "-50", null, null);
+		client.get().uri(STOCK).exchange().expectBody().jsonPath("$[0].stepSize").isEqualTo(50.0);
+
+		// an explicit amount still overrides the step
+		json = ok(post(STOCK + "/" + item + "/increase", "{\"amount\":15}"));
+		assertThat(quantity(json)).isEqualByComparingTo("350");
+	}
+
+	@Test
+	void statusItemsHaveNoStepSize() {
+		String json = ok(post(STOCK, "{\"productId\":\"%s\",\"locationId\":\"%s\"}".formatted(cumin, pantry)));
+		assertThat(read(json, "$.item.stepSize")).isNull();
+	}
+
+	// --- exact update: "I used" / "Now I have" ---
+
+	@Test
+	void iUsedRecordsUsedAndCanBeUndone() {
+		String item = addRice("2");
+
+		String json = ok(put(STOCK + "/" + item + "/quantity", "{\"used\":0.75,\"note\":\"risotto\"}"));
+		assertThat(quantity(json)).isEqualByComparingTo("1.25");
+		assertEvent(read(json, "$.eventId"), "USED", "-0.75", null, null);
+
+		assertThat(quantity(undo(read(json, "$.eventId")))).isEqualByComparingTo("2");
+	}
+
+	@Test
+	void iUsedAllOfItLeavesZero() {
+		String item = addRice("2");
+		assertThat(quantity(ok(put(STOCK + "/" + item + "/quantity", "{\"used\":2}")))).isEqualByComparingTo("0");
+	}
+
+	@Test
+	void nowIHaveRecordsAdjustedAndCanBeUndone() {
+		String item = addRice("2");
+
+		String json = ok(put(STOCK + "/" + item + "/quantity", "{\"quantity\":0.285}"));
+		assertThat(quantity(json)).isEqualByComparingTo("0.285");
+		assertEvent(read(json, "$.eventId"), "ADJUSTED", "-1.715", null, null);
+
+		assertThat(quantity(undo(read(json, "$.eventId")))).isEqualByComparingTo("2");
+	}
+
+	@Test
+	void exactUpdateValidation() {
+		String item = addRice("2");
+
+		// more than is there: refused, not clamped
+		put(STOCK + "/" + item + "/quantity", "{\"used\":2.5}")
+				.expectStatus().isBadRequest()
+				.expectBody()
+				.jsonPath("$.errors[0].field").isEqualTo("used")
+				.jsonPath("$.errors[0].message").value(String.class, m -> assertThat(m).contains("2"));
+		put(STOCK + "/" + item + "/quantity", "{\"used\":1,\"quantity\":1}")
+				.expectStatus().isBadRequest()
+				.expectBody().jsonPath("$.errors[0].field").isEqualTo("used");
+		put(STOCK + "/" + item + "/quantity", "{}")
+				.expectStatus().isBadRequest()
+				.expectBody().jsonPath("$.errors[0].field").isEqualTo("quantity");
+		put(STOCK + "/" + item + "/quantity", "{\"used\":0}")
+				.expectStatus().isBadRequest()
+				.expectBody().jsonPath("$.errors[0].field").isEqualTo("used");
+		put(STOCK + "/" + item + "/quantity", "{\"used\":-1}").expectStatus().isBadRequest();
+
+		assertThat(count("stock_event")).isEqualTo(1);
+		assertThat(jdbc.sql("select quantity from stock_item where id = ?::uuid").param(item)
+				.query(BigDecimal.class).single()).isEqualByComparingTo("2");
 	}
 
 	@Test
@@ -250,7 +336,7 @@ class StockApiTests extends ApiTestSupport {
 		String dec = read(ok(client.post().uri(STOCK + "/" + item + "/decrease").exchange()), "$.eventId");
 		String adj = read(ok(put(STOCK + "/" + item + "/quantity", "{\"quantity\":10}")), "$.eventId");
 
-		assertThat(quantity(undo(adj))).isEqualByComparingTo("4");
+		assertThat(quantity(undo(adj))).isEqualByComparingTo("4.5");
 		assertThat(quantity(undo(dec))).isEqualByComparingTo("5");
 		assertThat(quantity(undo(inc))).isEqualByComparingTo("2");
 		// undone events stay in the log, marked
@@ -301,7 +387,7 @@ class StockApiTests extends ApiTestSupport {
 				.expectStatus().isEqualTo(409)
 				.expectBody().jsonPath("$.detail").value(String.class, d -> assertThat(d).contains("latest"));
 		assertThat(jdbc.sql("select quantity from stock_item where id = ?::uuid").param(item)
-				.query(BigDecimal.class).single()).isEqualByComparingTo("4");
+				.query(BigDecimal.class).single()).isEqualByComparingTo("3");
 	}
 
 	@Test

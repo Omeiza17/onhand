@@ -45,11 +45,13 @@ A kind of thing I keep (e.g. "Basmati rice", "Eggs", "Cumin", "Floor cleaner",
 | default_unit | for COUNTED only: `piece`, `g`, `kg`, `ml`, `l`, `pack`, `tin` |
 | default_location | optional |
 | min_quantity | optional, COUNTED only — below this → goes on shopping list |
+| step_size | **new** — COUNTED only, nullable. How much −/+ moves. Null = unit default: piece/pack/tin 1, g 100, kg 0.5, ml 250, l 0.5. Set from the Home update panel, not on Add product. |
 | barcode | optional, nullable, unique when present (Phase 2) |
 
 ### Tracking modes
 - **COUNTED** — amount matters: "3 tins", "485 g", "6 rolls". Quick update = +/−
-  for discrete units; weighed/measured units need exact entry (see Open decisions).
+  by the product's step size (one tap), **or** tap the amount to set it exactly
+  (see Quick update below).
 - **STATUS** — amount not worth logging (spices, oil, salt, floor cleaner).
   Values: `HAVE`, `LOW`, `OUT`. Quick update = tap to cycle.
 
@@ -104,9 +106,14 @@ in the same transaction so reads stay simple.
    Everything grouped by location, with search and a filter: **All · Food ·
    Household** (by Product `kind`). Each row shows quantity or status.
    This is the core of the app.
-2. **Quick update**
-   Tap a row: +/− for COUNTED, cycle HAVE→LOW→OUT for STATUS. No forms.
-   An undo toast after every change.
+2. **Quick update** (on Home, not a separate page)
+   - STATUS: tap the pill to cycle HAVE→LOW→OUT.
+   - COUNTED, one tap: −/+ moves by `step_size`.
+   - COUNTED, exact: tap the amount → bottom panel with "I used" / "Now I have",
+     a decimal input, quick amounts (1×step, 2×step, Half, All of it) when using,
+     a live result preview, and the product's step-size choices.
+     Example: 485 g chicken, used 200 → 285 g.
+   - An undo toast after every change. No confirmation dialogs.
 3. **Add product**
    Name (with autocomplete against existing products), kind (Food/Household),
    tracking mode, location, optional quantity. The quantity field accepts typed
@@ -143,14 +150,14 @@ in the same transaction so reads stay simple.
 - Works acceptably on a phone over home Wi-Fi; offline support is not required
   for MVP.
 
-## Open decisions
-
-- **Partial use of weighed items from Home** (e.g. used 200 g of 485 g chicken).
-  Options: (a) tap the quantity to type an exact amount ("used 200 g" or
-  "now 285 g"); (b) per-product step size for +/−. Leaning (a) for g/kg/ml/l
-  units, keeping one-tap +/− for piece/pack/tin. Decide before slice 3.
-
 ## Changelog
+
+- **2026-11-08 (2)** — Partial use decided: **both** exact entry and per-product
+  step size (see Quick update). Backend impact: new Flyway migration adding
+  nullable `step_size` (decimal) to product; expose it in product DTOs and allow
+  updating it; the stock "set quantity" path must accept an absolute quantity
+  ("now I have") as well as a delta ("I used"), each recorded as a StockEvent
+  (`ADJUSTED` / `USED`) and undoable like other changes; tests for both.
 
 - **2026-11-08** — Scope widened from food to all used-up-and-re-bought household
   items. Added Product `kind` (FOOD/HOUSEHOLD) + Home filter; household example

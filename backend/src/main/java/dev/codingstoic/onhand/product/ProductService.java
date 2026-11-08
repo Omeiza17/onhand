@@ -62,6 +62,17 @@ public class ProductService {
 		}
 	}
 
+	/** Sets how far one tap on −/+ moves (null = unit default). COUNTED products only. */
+	@Transactional
+	public Product setStepSize(UUID id, StepSizeRequest request) {
+		Product product = get(id);
+		if (product.trackingMode() != TrackingMode.COUNTED) {
+			throw new InvalidRequestException("stepSize", "only allowed for COUNTED products");
+		}
+		return products.updateStepSize(id, request.stepSize())
+				.orElseThrow(() -> new NotFoundException("Product", id));
+	}
+
 	/** Deletes the product together with its stock and stock history. */
 	@Transactional
 	public void delete(UUID id) {
