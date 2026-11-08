@@ -164,6 +164,11 @@
   text-underline-offset: 5px;
 }
 
+/* COUNTED at 0: the amount button reads "Out" in the Out-pill style */
+.row__out {
+  min-width: 72px;
+}
+
 /* status pill: Have = filled, Low = filled warm, Out = dashed outline */
 .pill {
   min-width: 76px;

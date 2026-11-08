@@ -2,10 +2,12 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import type { StockItem } from '../api/types.ts'
 import { formatQuantity, num, parseDecimal, stepChoices, unitLabel } from '../lib/format.ts'
 
-type Mode = 'used' | 'now'
+import type { SheetMode as Mode } from './StockRow.tsx'
 
 interface Props {
   item: StockItem
+  /** "I used" by default; "Now I have" when opened from an item that's out */
+  initialMode?: Mode
   /** element to give focus back to on close */
   returnFocusTo: HTMLElement | null
   onClose: () => void
@@ -20,11 +22,11 @@ const DECIMAL = /^\d*[.,]?\d*$/
  * "Now I have", with quick amounts, a live result and — for weighed units — the
  * product's step size.
  */
-export default function UpdateSheet({ item, returnFocusTo, onClose, onSubmit, onStepChange }: Props) {
+export default function UpdateSheet({ item, initialMode = 'used', returnFocusTo, onClose, onSubmit, onStepChange }: Props) {
   const current = item.quantity ?? 0
   const step = item.stepSize ?? 1
-  const [mode, setMode] = useState<Mode>('used')
-  const [text, setText] = useState('')
+  const [mode, setMode] = useState<Mode>(initialMode)
+  const [text, setText] = useState(initialMode === 'now' ? num(current) : '')
   const sheetRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const titleId = useId()

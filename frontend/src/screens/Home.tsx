@@ -10,9 +10,9 @@ import {
 } from '../api/stock.ts'
 import type { Kind, StockChange, StockItem } from '../api/types.ts'
 import { SearchIcon } from '../components/Icons.tsx'
-import StockRow from '../components/StockRow.tsx'
+import StockRow, { type SheetMode } from '../components/StockRow.tsx'
 import UpdateSheet from '../components/UpdateSheet.tsx'
-import { describe } from '../lib/format.ts'
+import { describe, isOnList } from '../lib/format.ts'
 import { Link } from '../components/Link.tsx'
 import { useToast } from '../lib/toast.ts'
 import type { StockState } from '../lib/useStock.ts'
@@ -46,7 +46,7 @@ function groupByLocation(items: StockItem[]): Place[] {
 export default function Home({ stock }: { stock: StockState }) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('ALL')
-  const [sheet, setSheet] = useState<{ itemId: string; opener: HTMLElement } | null>(null)
+  const [sheet, setSheet] = useState<{ itemId: string; opener: HTMLElement; mode: SheetMode } | null>(null)
   const toast = useToast()
   // latest request per item: a slower, older response must not overwrite a newer one
   const latest = useRef(new Map<string, number>())
@@ -173,9 +173,10 @@ export default function Home({ stock }: { stock: StockState }) {
                   onDecrease={(i) => void run(i, () => decreaseStock(i.id))}
                   onIncrease={(i) => void run(i, () => increaseStock(i.id))}
                   onCycle={(i) => void run(i, () => cycleStockStatus(i.id))}
-                  onOpenSheet={(i, opener) => {
+                  onList={isOnList(item, all)}
+                  onOpenSheet={(i, opener, mode) => {
                     toast.dismiss()
-                    setSheet({ itemId: i.id, opener })
+                    setSheet({ itemId: i.id, opener, mode })
                   }}
                 />
               ))}
@@ -189,6 +190,7 @@ export default function Home({ stock }: { stock: StockState }) {
       {sheetItem && sheet && (
         <UpdateSheet
           item={sheetItem}
+          initialMode={sheet.mode}
           returnFocusTo={sheet.opener}
           onClose={() => setSheet(null)}
           onStepChange={(i, s) => void changeStep(i, s)}

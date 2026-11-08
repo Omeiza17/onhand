@@ -48,15 +48,44 @@ class ShoppingApiTests extends ApiTestSupport {
 
 	@Test
 	void countedProductsBelowTheirMinimumAreListed() {
-		countedAt("Floor cleaner", sink, "piece", "1", "0");
+		countedAt("Floor cleaner", sink, "bottle", "2", "1");
 		countedAt("Eggs", fridge, "piece", "4", "4"); // at the minimum: not below
-		countedAt("Rice", pantry, "kg", null, "0"); // no minimum: never listed
+		countedAt("Rice", pantry, "kg", null, "2"); // no minimum and some left: not listed
 
 		String json = list();
 		assertThat(names(json)).containsExactly("Floor cleaner");
 		assertThat(read(json, "$.items[0].reason")).isEqualTo("BELOW_MIN");
-		assertThat(new BigDecimal(read(json, "$.items[0].minQuantity"))).isEqualByComparingTo("1");
-		assertThat(read(json, "$.items[0].unit")).isEqualTo("piece");
+		assertThat(new BigDecimal(read(json, "$.items[0].minQuantity"))).isEqualByComparingTo("2");
+		assertThat(read(json, "$.items[0].unit")).isEqualTo("bottle");
+	}
+
+	@Test
+	void countedProductsAtZeroAreOutWithOrWithoutAMinimum() {
+		countedAt("Rice", pantry, "kg", null, "0"); // no minimum
+		countedAt("Floor cleaner", sink, "piece", "1", "0"); // with a minimum: 0 is out, not "below"
+
+		String json = list();
+		assertThat(names(json)).containsExactly("Floor cleaner", "Rice");
+		assertThat(read(json, "$.items[0].reason")).isEqualTo("OUT");
+		assertThat(read(json, "$.items[1].reason")).isEqualTo("OUT");
+		assertThat(read(json, "$.items[1].minQuantity")).isNull();
+	}
+
+	@Test
+	void zeroInOnePlaceIsntOutWhileAnotherPlaceHasSome() {
+		String rice = countedAt("Rice", pantry, "kg", null, "0");
+		post("/api/v1/stock", "{\"productId\":\"%s\",\"locationId\":\"%s\",\"quantity\":1}".formatted(rice, fridge))
+				.expectStatus().isOk();
+		assertThat(names(list())).isEmpty();
+	}
+
+	@Test
+	void puttingAwayAProductThatWasOutWithoutAMinimumAddsOneStep() {
+		String rice = countedAt("Rice", pantry, "kg", null, "0");
+		check("products/" + rice, true);
+		ok(post(SHOPPING + "/put-away", "{}"), 200);
+		assertThat(quantity(rice)).isEqualByComparingTo("0.5");
+		assertThat(names(list())).isEmpty();
 	}
 
 	@Test

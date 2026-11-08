@@ -1,18 +1,22 @@
 import type { StockItem, StockStatus } from '../api/types.ts'
-import { describe, formatQuantity, isBelowMinimum, NEXT_STATUS, STATUS_LABEL } from '../lib/format.ts'
+import { describe, formatQuantity, isOut, NEXT_STATUS, STATUS_LABEL } from '../lib/format.ts'
 import { MinusIcon, PlusIcon } from './Icons.tsx'
 import { Link } from './Link.tsx'
 
+export type SheetMode = 'used' | 'now'
+
 interface Props {
   item: StockItem
+  /** the product is on the shopping list (shows "· On list") */
+  onList: boolean
   onDecrease: (item: StockItem) => void
   onIncrease: (item: StockItem) => void
-  onOpenSheet: (item: StockItem, opener: HTMLButtonElement) => void
+  onOpenSheet: (item: StockItem, opener: HTMLButtonElement, mode: SheetMode) => void
   onCycle: (item: StockItem) => void
 }
 
 /** One product at one location: name + category, then −/amount/+ (COUNTED) or a status pill. */
-export default function StockRow({ item, onDecrease, onIncrease, onOpenSheet, onCycle }: Props) {
+export default function StockRow({ item, onList, onDecrease, onIncrease, onOpenSheet, onCycle }: Props) {
   const name = item.productName
   return (
     <li className="row">
@@ -27,7 +31,7 @@ export default function StockRow({ item, onDecrease, onIncrease, onOpenSheet, on
         </span>
         <span className="row__meta">
           {item.category && <span>{item.category}</span>}
-          {isBelowMinimum(item) && <span className="row__on-list">· On list</span>}
+          {onList && <span className="row__on-list">· On list</span>}
         </span>
       </Link>
 
@@ -42,7 +46,7 @@ export default function StockRow({ item, onDecrease, onIncrease, onOpenSheet, on
   )
 }
 
-function CountedButtons({ item, onDecrease, onIncrease, onOpenSheet }: Omit<Props, 'onCycle'>) {
+function CountedButtons({ item, onDecrease, onIncrease, onOpenSheet }: Omit<Props, 'onCycle' | 'onList'>) {
   const step = formatQuantity(item.unit, item.stepSize ?? 1)
   const amount = describe(item)
   return (
@@ -56,15 +60,28 @@ function CountedButtons({ item, onDecrease, onIncrease, onOpenSheet }: Omit<Prop
       >
         <MinusIcon size={18} strokeWidth={2.2} />
       </button>
-      <button
-        type="button"
-        className="row__amount"
-        onClick={(e) => onOpenSheet(item, e.currentTarget)}
-        aria-label={`${item.productName}: ${amount}. Set exact amount`}
-        aria-haspopup="dialog"
-      >
-        {amount}
-      </button>
+      {isOut(item) ? (
+        // at 0 the amount reads "Out" like the Out pill; the sheet opens on "Now I have"
+        <button
+          type="button"
+          className="pill pill--out row__out"
+          onClick={(e) => onOpenSheet(item, e.currentTarget, 'now')}
+          aria-label={`${item.productName}: out. Set amount`}
+          aria-haspopup="dialog"
+        >
+          Out
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="row__amount"
+          onClick={(e) => onOpenSheet(item, e.currentTarget, 'used')}
+          aria-label={`${item.productName}: ${amount}. Set exact amount`}
+          aria-haspopup="dialog"
+        >
+          {amount}
+        </button>
+      )}
       <button
         type="button"
         className="round-btn"

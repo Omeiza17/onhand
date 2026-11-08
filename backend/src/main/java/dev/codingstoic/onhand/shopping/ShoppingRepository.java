@@ -18,22 +18,24 @@ import org.springframework.stereotype.Repository;
 class ShoppingRepository {
 
 	/**
-	 * Products running low right now (spec: STATUS products that are LOW/OUT anywhere, COUNTED
-	 * products whose total across places is below min_quantity). Archived products never are.
+	 * Products running low right now (spec): STATUS products that are LOW/OUT anywhere; COUNTED
+	 * products whose total across places is 0 (out, with or without a minimum) or below
+	 * min_quantity. Archived products never are.
 	 */
 	private static final String LOW = """
 			with low as (
 			    select p.id as product_id,
 			           case when p.tracking_mode = 'STATUS'
 			                then case when bool_or(s.status = 'OUT') then 'OUT' else 'LOW' end
+			                when sum(s.quantity) = 0 then 'OUT'
 			                else 'BELOW_MIN' end as reason
 			    from product p
 			    join stock_item s on s.product_id = p.id
 			    where p.archived_at is null
 			    group by p.id
 			    having (p.tracking_mode = 'STATUS' and bool_or(s.status in ('LOW', 'OUT')))
-			        or (p.tracking_mode = 'COUNTED' and p.min_quantity is not null
-			            and sum(s.quantity) < p.min_quantity)
+			        or (p.tracking_mode = 'COUNTED' and (sum(s.quantity) = 0
+			            or (p.min_quantity is not null and sum(s.quantity) < p.min_quantity)))
 			)
 			""";
 

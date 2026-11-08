@@ -9,7 +9,8 @@ import dev.codingstoic.onhand.product.Unit;
  * One line of the shopping list. {@code source} AUTO: a product running low at home (derived
  * from stock; {@code id} is null, tick it by {@code productId}). MANUAL: added by you
  * ({@code id} set; {@code productId} set when the name matches a tracked product).
- * {@code reason}: LOW / OUT (STATUS products) or BELOW_MIN (COUNTED, below {@code minQuantity}).
+ * {@code reason}: LOW / OUT (STATUS products; COUNTED at 0 is OUT too) or BELOW_MIN (COUNTED,
+ * above 0 but below {@code minQuantity}).
  * {@code places}: where the product lives, e.g. "Under the sink".
  */
 public record ShoppingItem(

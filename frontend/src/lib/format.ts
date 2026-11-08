@@ -70,14 +70,19 @@ export function stepChoices(unit: Unit | null): number[] {
   return (unit && STEP_CHOICES[unit]) || []
 }
 
-/** COUNTED and below the product's minimum → it belongs on the shopping list. */
-export function isBelowMinimum(item: StockItem): boolean {
-  return (
-    item.trackingMode === 'COUNTED' &&
-    item.minQuantity !== null &&
-    item.quantity !== null &&
-    item.quantity < item.minQuantity
-  )
+/** COUNTED at 0: out, shown like the Out pill (DESIGN.md "COUNTED at 0"). */
+export function isOut(item: StockItem): boolean {
+  return item.trackingMode === 'COUNTED' && (item.quantity ?? 0) === 0
+}
+
+/**
+ * COUNTED and on the shopping list, per the spec: the product's total across all places is 0,
+ * or below its minimum. `all` is every stock item (for the total).
+ */
+export function isOnList(item: StockItem, all: StockItem[]): boolean {
+  if (item.trackingMode !== 'COUNTED') return false
+  const total = all.filter((i) => i.productId === item.productId).reduce((sum, i) => sum + (i.quantity ?? 0), 0)
+  return total === 0 || (item.minQuantity !== null && total < item.minQuantity)
 }
 
 
